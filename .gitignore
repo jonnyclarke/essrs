@@ -1,0 +1,5 @@
+/target
+
+# Coverage report outputs
+*.xml
+*.html

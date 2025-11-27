@@ -1,0 +1,8 @@
+[alias]
+coverage = [
+    "tarpaulin",
+    "--workspace",
+    "--exclude-files", "tests/*",   # Exclude test code
+    "--out", "Html",
+    "--out", "Xml"
+]
