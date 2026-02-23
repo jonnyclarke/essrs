@@ -1,0 +1,8 @@
+# Reorder imports alphabetically
+reorder_imports = true
+
+# Group imports: std → external crates → internal crate
+group_imports = "StdExternalCrate"
+
+# Keep imports from the same crate together
+imports_granularity = "Crate"
