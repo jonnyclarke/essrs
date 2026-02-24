@@ -1,23 +1,21 @@
-mod compile_assertions;
 mod config;
 mod initialise;
 mod new;
-mod random;
 
-use std::marker::PhantomData;
+use std::{marker::PhantomData, path::Path, time::Instant};
 
-use ndarray::{Array1, Array2}; // ← THIS imports all arithmetic traits
-use ndarray::{ArrayBase, prelude::*};
-use rand::{self, Rng};
+use rand::{self};
 use tracing::info;
 
-use crate::{FloatExt, chains::ChainBuffer, data::DataBuffer, log_likelihood::LogLikelihoodModel};
+use crate::{
+    chains::ChainBuffer, log_likelihood::LogLikelihoodModel, moves::MoveHandler, state::WalkerState,
+};
 
 pub trait EnsembleSliceSamplerConfigTrait {
     const MAX_N_STEPS: usize;
     const N_WALKERS: usize;
     const N_PARAMETERS: usize;
-    const N_DATA_DIMENS: usize;
+    // const N_DATA_DIMENS: usize;
     const N_BURN_IN: usize;
     const N_THIN_STRIDE: usize;
     const ENABLE_EARLY_STOPPING: bool;
@@ -27,154 +25,109 @@ pub struct EnsembleSliceSamplerConfig<
     const MAX_N_STEPS: usize,
     const N_WALKERS: usize,
     const N_PARAMETERS: usize,
-    const N_DATA_DIMENS: usize,
+    // const N_DATA_DIMENS: usize,
     const N_BURN_IN: usize,
     const N_THIN_STRIDE: usize,
     const ENABLE_EARLY_STOPPING: bool,
 > {}
 
 pub struct EnsemblSliceSampler<
-    T: FloatExt,
-    CHAINS: ChainBuffer<T>,
-    MODEL: LogLikelihoodModel<T>,
+    CHAINS: ChainBuffer,
+    MODEL: LogLikelihoodModel,
     CONFIG: EnsembleSliceSamplerConfigTrait,
 > {
-    data: DataBuffer<T, CONFIG>,
-    chains: CHAINS,
-    model: MODEL,
+    pub chains: CHAINS,
+    pub model: MODEL,
 
-    step: Array2<T>,
-    next: Array2<T>,
-
-    step_ll: Array1<T>,
-    next_ll: Array1<T>,
+    state_i: WalkerState,
+    state_j: WalkerState,
 
     rng: rand::rngs::ThreadRng,
 
     _config: PhantomData<CONFIG>,
-    _type: PhantomData<T>,
 }
 
-impl<
-    T: FloatExt,
-    CHAINS: ChainBuffer<T>,
-    MODEL: LogLikelihoodModel<T>,
-    CONFIG: EnsembleSliceSamplerConfigTrait,
-> EnsemblSliceSampler<T, CHAINS, MODEL, CONFIG>
+impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSamplerConfigTrait>
+    EnsemblSliceSampler<CHAINS, MODEL, CONFIG>
 {
-    fn get_likelihood_floor(&mut self, i: usize) -> T {
-        self.step_ll[i]
-            + self
-                .rng
-                .random_range((T::my_min_positive())..T::from(1.0).unwrap())
-                .ln()
+    pub fn accept_proposed_state(&mut self) {
+        // let mut state0 = self.state_i.get_mut_state_matrix();
+        self.state_i
+            .get_mut_state_matrix()
+            .assign(&self.state_j.get_state_matrix());
+
+        // let mut ll0 = self.state_i.get_mut_ll_vector();
+        self.state_i
+            .get_mut_ll_vector()
+            .assign(&self.state_j.get_mut_ll_vector());
     }
 
-    fn get_vector(&self, l: usize, r: usize) -> Array1<T> {
-        &self.step.row(l) - &self.step.row(r)
-    }
-
-    fn step_out(&self, anchor_vec: &Array1<T>, direction_vec: &Array1<T>, ll_floor: T) -> (T, T) {
-        let mut nl: T = T::get_neg_one();
-        let mut nr: T = T::get_one();
-        let one: T = T::get_one();
-
-        // Left
-        let params_l = anchor_vec + &(direction_vec * nl);
-        let mut log_l_l = self.model.log_likelihood(&self.data, &params_l);
-
-        while log_l_l > ll_floor {
-            nl -= one;
-            let params_l = anchor_vec + &(direction_vec * nl);
-            log_l_l = self.model.log_likelihood(&self.data, &params_l);
-        }
-
-        // Right
-        let params_r = anchor_vec + &(direction_vec * nr);
-        let mut log_l_r = self.model.log_likelihood(&self.data, &params_r);
-
-        while log_l_r > ll_floor {
-            nr += one;
-            let params_r = anchor_vec + &(direction_vec * nr);
-            log_l_r = self.model.log_likelihood(&self.data, &params_r);
-        }
-
-        (nl, nr)
-    }
-
-    fn step_in(
-        &mut self,
-        anchor_vec: &Array1<T>,
-        direction_vec: &Array1<T>,
-        mut nl: T,
-        mut nr: T,
-        ll_floor: T,
-    ) -> (T, Array1<T>) {
-        let zero: T = T::get_zero();
-        let mut shift = self.rng.random_range(nl..nr);
-        let mut params = anchor_vec + &(direction_vec * shift);
-        let mut ll = self.model.log_likelihood(&self.data, &params);
-
-        while ll < ll_floor {
-            if shift < zero {
-                nl = shift
-            } else {
-                nr = shift
-            }
-
-            shift = self.rng.random_range(nl..nr);
-            params = anchor_vec + &(direction_vec * shift);
-            ll = self.model.log_likelihood(&self.data, &params);
-        }
-
-        (ll, params)
-    }
-
-    pub fn jump(&mut self, _iteration: usize) {
-        for i in 0..CONFIG::N_WALKERS {
-            let current: &ArrayBase<ndarray::OwnedRepr<T>, Dim<[usize; 1]>, T> =
-                &self.step.row(i).to_owned();
-
-            let l: usize = self.get_rn_not(i);
-            let r: usize = self.get_rn_not_or(i, l);
-
-            let ll_floor: T = self.get_likelihood_floor(i);
-
-            let direction: Array1<T> = self.get_vector(l, r);
-
-            let (nl, nr) = self.step_out(current, &direction, ll_floor);
-
-            let (ll, accepted) = self.step_in(current, &direction, nl, nr, ll_floor);
-
-            let mut nxt = self.next.row_mut(i);
-            nxt.assign(&accepted);
-
-            self.next_ll[i] = ll;
-
-            // if iteration % 10 == 0 {
-            //     println!("WALKER: {} :: Log-likelihood = {} :: Parameters = [{}, {}]", i+1, ll, accepted[0], accepted[1].exp());
-            // }
-        }
-    }
-
-    pub fn accept_proposals(&mut self) {
-        self.step.assign(&self.next);
-        self.step_ll.assign(&self.next_ll);
-    }
-
-    pub fn run_sampler(&mut self) {
-        // initial jump to avoid storing chain initialisation
-        // println!("INITIALISING");
-        self.jump(0);
-        self.accept_proposals();
+    pub fn run_sampler(&mut self, move_handler: MoveHandler) {
+        let start_time = Instant::now();
 
         for i in 1..=CONFIG::MAX_N_STEPS {
-            // if i % 10 == 0 {println!("\n\nIteration {i} / {N_STEPS}\n");}
             info!(iteration = i);
-            self.jump(i);
-            self.chains.record_state(&self.step);
-            self.accept_proposals();
-            // if i==5 {panic!("FORCE PANIC");}
+            move_handler.distribute_jump(
+                &mut self.rng,
+                &self.model,
+                &self.state_i,
+                &mut self.state_j,
+            );
+            self.accept_proposed_state();
+            self.chains
+                .record_state(&self.state_i.get_state_matrix().to_owned());
+
+            let duration = start_time.elapsed();
+
+            let projected = duration / (i as u32) * (CONFIG::MAX_N_STEPS as u32);
+
+            println!(
+                "Iteration {i} / {} :: TIME ELAPSED -- {} SEC [{} TOTAL]",
+                CONFIG::MAX_N_STEPS,
+                duration.as_secs(),
+                projected.as_secs()
+            );
+            if i % 10 == 0 {
+                self.print_quantile_summary();
+            }
+        }
+    }
+
+    pub fn display_parameter_summaries(&self) {
+        self.chains.display_parameter_summaries();
+    }
+
+    pub fn save_log_likelihood<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+        self.state_i.dump_final_log_likelihood(path)
+    }
+
+    pub fn print_quantile_summary(&self) {
+        // Make a sorted copy
+        let mut values = self.state_i.get_ll_vector().to_vec();
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+        let n = values.len();
+
+        let p25 = n / 4;
+        let p50 = n / 2;
+        let p75 = 3 * n / 4;
+
+        for (i, v) in values.iter().enumerate() {
+            if i == 0 {
+                println!("-- MIN: {}", v)
+            }
+            if i == p25 {
+                println!("-- p25: {}", v)
+            }
+            if i == p50 {
+                println!("-- p50: {}", v)
+            }
+            if i == p75 {
+                println!("-- p75: {}", v)
+            }
+            if i == n - 1 {
+                println!("-- MAX: {}\n", v)
+            }
         }
     }
 }

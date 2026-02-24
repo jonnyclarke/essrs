@@ -1,4 +1,5 @@
 [alias]
+# compute test coverage of the crate and output into html and xml format
 coverage = [
     "tarpaulin",
     "--workspace",
@@ -6,3 +7,13 @@ coverage = [
     "--out", "Html",
     "--out", "Xml"
 ]
+
+# Apply rust formatting throughout project [run with `cargo +nightly` to also re-order imports etc]
+fmt-all = "fmt --all"
+
+# Generate crate documentation correctly rendering all mathematics
+doc-math = "doc --features doc-math"
+
+# Run the CI commands to locally check that they will pass/fail.
+clippy-ci = "clippy --all-features -- -D warnings"
+fmt-ci = "fmt --all -- --check"

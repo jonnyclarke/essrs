@@ -1,0 +1,75 @@
+name: Coverage
+
+on:
+  push:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo binaries
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin
+          key: cargo-tarpaulin-v0.34.1
+          restore-keys: |
+            cargo-tarpaulin-
+
+      - name: Install cargo-tarpaulin
+        run: |
+          if ! command -v cargo-tarpaulin &> /dev/null; then
+            cargo install cargo-tarpaulin --version 0.34.1
+          fi
+          cargo-tarpaulin --version
+
+      - name: Run coverage
+        run: |
+          cargo tarpaulin \
+            --workspace \
+            --exclude-files tests/* \
+            --out Xml \
+            --output-dir target/tarpaulin \
+            --engine llvm \
+            --lib
+
+      - name: List tarpaulin outputs
+        run: |
+          ls
+          ls -R target/tarpaulin
+
+      - name: Parse coverage XML
+        id: coverage
+        run: |
+          python3 - <<EOF
+          import xml.etree.ElementTree as ET
+          tree = ET.parse("target/tarpaulin/cobertura.xml")
+          root = tree.getroot()
+          line_rate = float(root.attrib.get("line-rate", 0.0))
+          print(f"line_rate={line_rate}")
+          with open("${GITHUB_OUTPUT}", "a") as f:
+              f.write(f"line_rate={line_rate}\n")
+          EOF
+
+      - name: Enforce minimum coverage
+        run: |
+          REQUIRED=0.50
+          ACTUAL=${{ steps.coverage.outputs.line_rate }}
+          echo "Coverage required: $REQUIRED"
+          echo "Coverage actual:   $ACTUAL"
+          python3 - <<EOF
+          import sys
+          required = 0.50
+          actual = float("${ACTUAL}")
+          if actual < required:
+              print(f"Coverage {actual:.2%} is below required {required:.2%}")
+              sys.exit(1)
+          EOF

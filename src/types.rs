@@ -1,4 +1,5 @@
 use core::f32;
+use std::ops::{Add, Mul};
 use std::ops::{AddAssign, SubAssign};
 
 use ndarray::ScalarOperand;
@@ -9,10 +10,14 @@ pub trait FloatExt:
     Float
     + ScalarOperand
     + SampleUniform
+    + Mul
+    + Add
     + SubAssign
     + AddAssign
+    + std::ops::MulAssign
     + std::iter::Sum<Self>
     + std::iter::Sum<&'static Self>
+    + std::fmt::Display
 {
     fn my_pi() -> Self;
     fn my_min_positive() -> Self;

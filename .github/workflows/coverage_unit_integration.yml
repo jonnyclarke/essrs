@@ -60,13 +60,13 @@ jobs:
 
       - name: Enforce minimum coverage
         run: |
-          REQUIRED=0.60
+          REQUIRED=0.95
           ACTUAL=${{ steps.coverage.outputs.line_rate }}
           echo "Coverage required: $REQUIRED"
           echo "Coverage actual:   $ACTUAL"
           python3 - <<EOF
           import sys
-          required = 0.60
+          required = 0.95
           actual = float("${ACTUAL}")
           if actual < required:
               print(f"Coverage {actual:.2%} is below required {required:.2%}")

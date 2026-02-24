@@ -1,38 +1,31 @@
 use std::marker::PhantomData;
 
-use ndarray::{Array1, Array2};
-
 use crate::{
-    FloatExt,
     chains::ChainBuffer,
-    data::DataBuffer,
     ess::{EnsemblSliceSampler, EnsembleSliceSamplerConfigTrait},
     log_likelihood::LogLikelihoodModel,
+    state::WalkerState,
 };
 
-impl<
-    T: FloatExt,
-    CHAINS: ChainBuffer<T>,
-    MODEL: LogLikelihoodModel<T>,
-    CONFIG: EnsembleSliceSamplerConfigTrait,
-> EnsemblSliceSampler<T, CHAINS, MODEL, CONFIG>
+impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSamplerConfigTrait>
+    EnsemblSliceSampler<CHAINS, MODEL, CONFIG>
 {
-    pub fn new(data: DataBuffer<T, CONFIG>, chains: CHAINS, model: MODEL) -> Self {
+    pub fn new(chains: CHAINS, model: MODEL) -> Self {
+        let nw = CONFIG::N_WALKERS;
+        let np = CONFIG::N_PARAMETERS;
+        let required_walkers = (np * 2).max(3);
+        assert!(nw >= required_walkers);
+
         Self {
-            data,
             chains,
             model,
 
-            step: Array2::<T>::zeros((CONFIG::N_WALKERS, CONFIG::N_PARAMETERS)),
-            next: Array2::<T>::zeros((CONFIG::N_WALKERS, CONFIG::N_PARAMETERS)),
-
-            step_ll: Array1::<T>::zeros(CONFIG::N_WALKERS),
-            next_ll: Array1::<T>::zeros(CONFIG::N_WALKERS),
+            state_i: WalkerState::new(CONFIG::N_WALKERS, CONFIG::N_PARAMETERS),
+            state_j: WalkerState::new(CONFIG::N_WALKERS, CONFIG::N_PARAMETERS),
 
             rng: rand::rng(),
 
             _config: PhantomData,
-            _type: PhantomData,
         }
     }
 }
