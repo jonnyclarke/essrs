@@ -1,6 +1,6 @@
-use rand::Rng;
+use rand::{Rng, RngCore};
 
-pub fn get_rn_not(rng: &mut impl Rng, max_index: usize, not_this: usize) -> usize {
+pub fn get_rn_not(rng: &mut dyn RngCore, max_index: usize, not_this: usize) -> usize {
     let mut random_number: usize = rng.random_range(0..max_index - 1);
 
     if random_number >= not_this {
@@ -11,7 +11,7 @@ pub fn get_rn_not(rng: &mut impl Rng, max_index: usize, not_this: usize) -> usiz
 }
 
 pub fn get_rn_not_or(
-    rng: &mut impl Rng,
+    rng: &mut dyn RngCore,
     max_index: usize,
     not_this: usize,
     or_this: usize,

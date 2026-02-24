@@ -1,7 +1,7 @@
 pub mod differential_move;
 pub mod gaussian_move;
 
-use rand::Rng;
+use rand::{Rng, RngCore};
 
 use crate::{
     log_likelihood::LogLikelihoodModel,
@@ -10,12 +10,12 @@ use crate::{
 };
 
 pub trait EnsembleMove {
-    fn get_likelihood_floor(&self, rng: &mut impl Rng) -> f64 {
+    fn get_likelihood_floor(&self, rng: &mut dyn RngCore) -> f64 {
         rng.random_range(0.0_f64..1.0_f64).ln()
     }
     fn jump(
         &self,
-        rng: &mut impl Rng,
+        rng: &mut dyn RngCore,
         log_likelihood_model: &dyn LogLikelihoodModel,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
@@ -23,14 +23,13 @@ pub trait EnsembleMove {
 }
 
 pub struct MoveHandler {
-    differential: DifferentialMove,
-    gaussian: GaussianMove,
+    vec_move: Vec<Box<dyn EnsembleMove>>,
     cumulative: Vec<f64>,
 }
 
 impl MoveHandler {
-    pub fn new(probability: Vec<f64>) -> Self {
-        assert!(probability.len() == 2);
+    pub fn new(vec_move: Vec<Box<dyn EnsembleMove>>, probability: Vec<f64>) -> Self {
+        assert!(probability.len() == vec_move.len());
 
         let total: f64 = probability.iter().sum();
 
@@ -43,8 +42,7 @@ impl MoveHandler {
             .collect::<Vec<_>>();
 
         Self {
-            differential: DifferentialMove::new(),
-            gaussian: GaussianMove::new(),
+            vec_move,
             cumulative,
         }
     }
@@ -58,14 +56,20 @@ impl MoveHandler {
     ) {
         let r: f64 = rng.random();
 
-        match self.cumulative.iter().position(|&c| r < c) {
-            Some(0) => self
-                .differential
-                .jump(rng, log_likelihood_model, state_i, state_j),
-            Some(1) => self
-                .gaussian
-                .jump(rng, log_likelihood_model, state_i, state_j),
-            _ => panic!("Invalid probability selection!"),
-        }
+        let i = self.cumulative.iter().position(|&c| r < c).unwrap();
+
+        self.vec_move[i].jump(rng, log_likelihood_model, state_i, state_j);
+    }
+}
+
+impl Default for MoveHandler {
+    fn default() -> Self {
+        Self::new(
+            vec![
+                Box::new(DifferentialMove::new()),
+                Box::new(GaussianMove::new()),
+            ],
+            vec![0.9, 1.0],
+        )
     }
 }

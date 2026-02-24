@@ -3,7 +3,7 @@ use ndarray::Array1;
 // This struct takes the current state and computes the covariance matrix
 // It then samples the covariance matrix around a random point and if the point is an improvement
 // then it accepts the jump.
-use rand::Rng;
+use rand::RngCore;
 use rand_distr::{Distribution, StandardNormal};
 
 use crate::{log_likelihood::LogLikelihoodModel, moves::EnsembleMove, state::WalkerState};
@@ -25,13 +25,11 @@ impl Default for GaussianMove {
 impl EnsembleMove for GaussianMove {
     fn jump(
         &self,
-        rng: &mut impl Rng,
+        rng: &mut dyn RngCore,
         likelihood_model: &dyn LogLikelihoodModel,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
     ) {
-        // println!("Gaussian Move");
-
         let state_matrix = state_i.get_state_matrix().to_owned();
 
         let mat = DMatrix::from_row_slice(
@@ -39,12 +37,9 @@ impl EnsembleMove for GaussianMove {
             state_matrix.ncols(),
             state_matrix.as_slice().unwrap(),
         );
-        // println!("{:?}", mat.shape());
 
-        // work out the covariance matrix
         let mean =
             DVector::from_iterator(mat.ncols(), (0..mat.ncols()).map(|j| mat.column(j).mean()));
-        // println!("Mean: {:?}", mean);
 
         let dim = mat.ncols();
         let n = mat.nrows() as f64;
@@ -66,13 +61,10 @@ impl EnsembleMove for GaussianMove {
                 }
             }
         }
-        // println!("Covariance:\n{:?}", cov);
-
         // Obtain Cholesky matrix
         let chol = Cholesky::new(cov).unwrap();
         let l = chol.l();
 
-        // println!("ITERATING");
         for i in 0..state_i.get_ll_vector().len() {
             // get the threshold for acceptance
             let ll_floor = state_i.get_ith_ll(i) + self.get_likelihood_floor(rng);
@@ -83,12 +75,10 @@ impl EnsembleMove for GaussianMove {
 
             let guess_array = Array1::from(guess.iter().cloned().collect::<Vec<f64>>());
             let ll_guess = likelihood_model.log_likelihood(guess_array.view());
-            // println!{"---\n{ll_floor} -> {ll_guess}"};
 
             if ll_guess >= ll_floor {
                 state_j.get_mut_ith_state_vector(i).assign(&guess_array);
                 *state_j.get_mut_ith_ll(i) = ll_guess;
-                // println!("accepting");
             } else {
                 state_j
                     .get_mut_ith_state_vector(i)

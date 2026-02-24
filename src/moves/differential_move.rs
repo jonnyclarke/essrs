@@ -1,5 +1,5 @@
 use ndarray::{Array1, ArrayView1};
-use rand::Rng;
+use rand::{Rng, RngCore};
 
 use crate::{
     log_likelihood::LogLikelihoodModel,
@@ -73,7 +73,7 @@ impl DifferentialMove {
 
     fn step_in(
         &self,
-        rng: &mut impl Rng,
+        rng: &mut dyn RngCore,
         model: &dyn LogLikelihoodModel,
         anchor_vec: ArrayView1<f64>,
         direction_vec: ArrayView1<f64>,
@@ -109,7 +109,7 @@ impl DifferentialMove {
 impl EnsembleMove for DifferentialMove {
     fn jump(
         &self,
-        rng: &mut impl rand::Rng,
+        rng: &mut dyn RngCore,
         log_likelihood_model: &dyn LogLikelihoodModel,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
