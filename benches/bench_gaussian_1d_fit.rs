@@ -40,7 +40,7 @@ fn fit_gaussian(data: Array2<f64>) -> () {
 
     ess.initialise(&start);
 
-    let move_handler = MoveHandler::new(vec![1.0, 0.0]);
+    let move_handler = MoveHandler::default();
     ess.run_sampler(move_handler);
 }
 

@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod test {
 
-    use criterion::{Criterion, criterion_group, criterion_main};
     use essrs::{
         chains::static_buffer::StaticBuffer,
         ess::{EnsemblSliceSampler, EnsembleSliceSamplerConfig},
@@ -17,7 +16,7 @@ mod test {
     fn test() {
         let data = helper_generate_random_gaussian_points(50);
 
-        const N_STEPS: usize = 50;
+        const N_STEPS: usize = 100;
         const N_PARAMETERS: usize = 2;
         const N_WALKERS: usize = 12;
 
@@ -48,7 +47,7 @@ mod test {
 
         ess.initialise(&start);
 
-        let move_handler = MoveHandler::new(vec![0.5, 0.5]);
+        let move_handler = MoveHandler::default();
         ess.run_sampler(move_handler);
 
         let tmp_file = NamedTempFile::new().unwrap();
