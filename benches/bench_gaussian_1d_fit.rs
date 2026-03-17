@@ -1,40 +1,27 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use essrs::{
     chains::static_buffer::StaticBuffer,
-    data::DataBuffer,
     ess::{EnsemblSliceSampler, EnsembleSliceSamplerConfig},
-    log_likelihood::gaussian::GaussianLogLikelihood1D,
+    log_likelihood::gaussian_1d_data_err::{
+        GaussianLl1dDataErrors, helper_generate_random_gaussian_points,
+    },
+    moves::MoveHandler,
 };
-use ndarray::{Array1, Array2, array};
-// use rand::prelude::*;
-use rand_distr::{Distribution, Normal};
+use ndarray::{Array2, array};
 
-fn generate_data(n: usize) -> Array2<f32> {
-    let normal = Normal::new(0.05, 0.94).unwrap();
-    let mut rng = rand::rng();
-    let arr = Array1::from((0..n).map(|_| normal.sample(&mut rng)).collect::<Vec<_>>());
-
-    // let std: f32 = arr.std(1.0);
-    // println!("\n\n\nSTATISTICS :: mu = {}, sigma = {}, ln-sigma = {}", arr.mean().unwrap(), std, std.ln());
-    arr.into_shape_with_order((n, 1)).unwrap()
-}
-
-fn fit_gaussian(data: Array2<f32>) -> () {
+fn fit_gaussian(data: Array2<f64>) -> () {
     const N_STEPS: usize = 100;
     const N_PARAMETERS: usize = 2;
     const N_WALKERS: usize = 12;
 
-    type Config = EnsembleSliceSamplerConfig<N_STEPS, N_WALKERS, N_PARAMETERS, 1, 0, 0, true>;
+    type Config = EnsembleSliceSamplerConfig<N_STEPS, N_WALKERS, N_PARAMETERS, 1, 0, true>;
 
-    let chains = StaticBuffer::<f32, Config>::new();
-    let model = GaussianLogLikelihood1D::<f32, Config>::new();
+    let chains = StaticBuffer::<Config>::new();
+    let model = GaussianLl1dDataErrors::new(data);
 
-    let mut ess = EnsemblSliceSampler::<
-        f32,
-        StaticBuffer<f32, Config>,
-        GaussianLogLikelihood1D<f32, Config>,
-        Config,
-    >::new(DataBuffer::<f32, Config>::new(data), chains, model);
+    let mut ess = EnsemblSliceSampler::<StaticBuffer<Config>, GaussianLl1dDataErrors, Config>::new(
+        chains, model,
+    );
 
     let start = array![
         [0.19, 0.001],
@@ -52,7 +39,9 @@ fn fit_gaussian(data: Array2<f32>) -> () {
     ];
 
     ess.initialise(&start);
-    ess.run_sampler();
+
+    let move_handler = MoveHandler::new(vec![1.0, 0.0]);
+    ess.run_sampler(move_handler);
 }
 
 fn bench_gaussian_1d_fit(c: &mut Criterion) {
@@ -60,7 +49,7 @@ fn bench_gaussian_1d_fit(c: &mut Criterion) {
     group.sample_size(10);
     group.bench_function("fit 1D Gaussian 1e6 points", |b| {
         b.iter(|| {
-            let data = generate_data(1_000_000);
+            let data = helper_generate_random_gaussian_points(1_000);
             fit_gaussian(std::hint::black_box(data));
         })
     });
