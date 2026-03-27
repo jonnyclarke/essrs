@@ -11,7 +11,7 @@ pub mod helpers {
 
     const MAX_N_STEPS: usize = 2;
 
-    type TestingConfig = EnsembleSliceSamplerConfig<MAX_N_STEPS, 4, 2, 0, 0, true>;
+    type TestingConfig = EnsembleSliceSamplerConfig<MAX_N_STEPS, 4, 2>;
 
     pub fn make_test_static_buffer() -> StaticBuffer<TestingConfig> {
         let buffer = StaticBuffer::<TestingConfig>::test_new(

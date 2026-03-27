@@ -56,6 +56,18 @@ pub fn lj_softplus(x: f64, ll: &mut f64) -> f64 {
     y
 }
 
+/// Apply the inverse of the softplus.
+/// [Can be useful for passing initial values in constrained space]
+///
+/// $$
+/// x = \ln\left(e^y - 1\right)
+/// $$
+///
+/// # Arguments:
+/// * `y` - the constrained parameter to be transformed to unconstrained space
+///
+/// # Returns
+/// * `x` - the corresponding value in unconstrained space
 pub fn inv_softplus(y: f64) -> f64 {
     log_diff_exp(y, 0.0).unwrap()
 }
@@ -173,6 +185,17 @@ mod tests {
 
         assert_eq!(y, target_y);
         assert_relative_eq!(ll, target_ll, epsilon = 1e-8);
+    }
+
+    /// Test inverse softplus
+    #[rstest]
+    #[case(1.0)]
+    #[case(2.0)]
+    #[case(3.0)]
+    #[case(1.2345678)]
+    fn test_inv_softplus_consistency(#[case] x: f64) {
+        let mut ll = 0.0;
+        assert_relative_eq!(x, inv_softplus(lj_softplus(x, &mut ll)), epsilon = 1e-8);
     }
 
     #[test]

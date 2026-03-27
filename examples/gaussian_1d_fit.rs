@@ -23,7 +23,7 @@ fn main() {
     const N_PARAMETERS: usize = 2;
     const N_WALKERS: usize = 12;
 
-    type Config = EnsembleSliceSamplerConfig<N_STEPS, N_WALKERS, N_PARAMETERS, 0, 0, true>;
+    type Config = EnsembleSliceSamplerConfig<N_STEPS, N_WALKERS, N_PARAMETERS>;
 
     let chains = StaticBuffer::<Config>::new();
     let model = GaussianLl1dDataErrors::new(data);

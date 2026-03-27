@@ -108,7 +108,7 @@ mod tests {
     use crate::ess::EnsembleSliceSamplerConfig;
 
     // ---- Mock Config ----
-    type TestConfig = EnsembleSliceSamplerConfig<10, 2, 2, 3, 5, false>;
+    type TestConfig = EnsembleSliceSamplerConfig<10, 2, 2>;
 
     #[test]
     fn test_record_and_extract_history() {
