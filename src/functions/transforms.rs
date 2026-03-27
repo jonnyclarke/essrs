@@ -58,14 +58,14 @@ pub fn lj_softplus(x: f64, ll: &mut f64) -> f64 {
 
 /// Apply the inverse of the softplus.
 /// [Can be useful for passing initial values in constrained space]
-/// 
+///
 /// $$
 /// x = \ln\left(e^y - 1\right)
 /// $$
-/// 
+///
 /// # Arguments:
 /// * `y` - the constrained parameter to be transformed to unconstrained space
-/// 
+///
 /// # Returns
 /// * `x` - the corresponding value in unconstrained space
 pub fn inv_softplus(y: f64) -> f64 {

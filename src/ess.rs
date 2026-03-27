@@ -15,20 +15,12 @@ pub trait EnsembleSliceSamplerConfigTrait {
     const MAX_N_STEPS: usize;
     const N_WALKERS: usize;
     const N_PARAMETERS: usize;
-    // const N_DATA_DIMENS: usize;
-    const N_BURN_IN: usize;
-    const N_THIN_STRIDE: usize;
-    const ENABLE_EARLY_STOPPING: bool;
 }
 
 pub struct EnsembleSliceSamplerConfig<
     const MAX_N_STEPS: usize,
     const N_WALKERS: usize,
     const N_PARAMETERS: usize,
-    // const N_DATA_DIMENS: usize,
-    const N_BURN_IN: usize,
-    const N_THIN_STRIDE: usize,
-    const ENABLE_EARLY_STOPPING: bool,
 > {}
 
 pub struct EnsemblSliceSampler<
