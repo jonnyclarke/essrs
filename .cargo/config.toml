@@ -3,7 +3,7 @@
 coverage = [
     "tarpaulin",
     "--workspace",
-    "--exclude-files", "tests/*",   # Exclude test code
+    "--exclude-files", "tests/*",   # Exclude integration test code
     "--out", "Html",
     "--out", "Xml"
 ]
