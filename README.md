@@ -1,7 +1,7 @@
 # essrs
 
-[![CI](https://github.com/jonnyclarke/essrs/actions/workflows/coverage_unit.yml/badge.svg)]
-[![CI](https://github.com/jonnyclarke/essrs/actions/workflows/coverage_unit_integration.yml/badge.svg)]
+[![CI](https://github.com/jonnyclarke/essrs/actions/workflows/coverage_test_unit.yml/badge.svg)]
+[![CI](https://github.com/jonnyclarke/essrs/actions/workflows/coverage_test_integration.yml/badge.svg)]
 [![CI](https://github.com/jonnyclarke/essrs/actions/workflows/clippy.yml/badge.svg)]
 [![CI](https://github.com/jonnyclarke/essrs/actions/workflows/rustfmt.yml/badge.svg)]
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]

@@ -35,5 +35,9 @@ wildcard_imports = "forbid"
 name = "bench_gaussian_1d_fit"
 harness = false
 
+[[bench]]
+name = "bench_move_handler"
+harness = false
+
 [features]
 doc-math = ["dep:katexit"]

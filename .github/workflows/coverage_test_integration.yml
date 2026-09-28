@@ -1,4 +1,4 @@
-name: Coverage-Unit
+name: Coverage-Test-Integration
 
 on:
   push:
@@ -11,13 +11,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo binaries
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: ~/.cargo/bin
           key: cargo-tarpaulin-v0.34.1
@@ -31,6 +31,14 @@ jobs:
           fi
           cargo-tarpaulin --version
 
+      - name: Show build environment
+        run: |
+          rustc -vV
+          cargo -V
+          cargo tarpaulin -V
+          uname -a
+          rustup show
+
       - name: Run coverage
         run: |
           cargo tarpaulin \
@@ -39,7 +47,7 @@ jobs:
             --out Xml \
             --output-dir target/tarpaulin \
             --engine llvm \
-            --lib
+            --test integration_tests
 
       - name: List tarpaulin outputs
         run: |
@@ -61,13 +69,13 @@ jobs:
 
       - name: Enforce minimum coverage
         run: |
-          REQUIRED=0.50
+          REQUIRED=0.75
           ACTUAL=${{ steps.coverage.outputs.line_rate }}
           echo "Coverage required: $REQUIRED"
           echo "Coverage actual:   $ACTUAL"
           python3 - <<EOF
           import sys
-          required = 0.50
+          required = 0.75
           actual = float("${ACTUAL}")
           if actual < required:
               print(f"Coverage {actual:.2%} is below required {required:.2%}")

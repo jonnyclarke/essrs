@@ -1,11 +1,19 @@
 [alias]
 # compute test coverage of the crate and output into html and xml format
-coverage = [
+coverage-unit = [
     "tarpaulin",
     "--workspace",
-    "--exclude-files", "tests/*",   # Exclude test code
+    "--exclude-files", "tests/*",   # Exclude integration test code
     "--out", "Html",
-    "--out", "Xml"
+    "--lib"
+]
+coverage-integration = [
+    "tarpaulin",
+    "--workspace",
+    "--exclude-files", "tests/*",
+    "--out", "Html",
+    "--engine", "llvm",
+    "--test", "integration_tests"
 ]
 
 # Apply rust formatting throughout project [run with `cargo +nightly` to also re-order imports etc]
