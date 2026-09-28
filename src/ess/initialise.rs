@@ -12,12 +12,15 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
     EnsemblSliceSampler<CHAINS, MODEL, CONFIG>
 {
     pub fn initialise(&mut self, initial: &Array2<f64>) {
-        self.state_i.get_mut_state_matrix().assign(initial);
+        self.state_i
+            .get_mut_state_matrix()
+            .assign(&self.model.columnar_transform_physical_to_internal(initial));
+
         let start_time = Instant::now();
         for i in 0..CONFIG::N_WALKERS {
             *self.state_i.get_mut_ith_ll(i) = self
                 .model
-                .log_likelihood(self.state_i.get_ith_state_vector(i))
+                .internal_log_likelihood(self.state_i.get_ith_state_vector(i))
         }
         let duration = start_time.elapsed();
 
@@ -43,10 +46,10 @@ mod tests {
         let mut ess = build_test_ess();
 
         ess.initialise(&array![
-            [0.0_f64, inv_softplus(1.0_f64)],
-            [1.0_f64, inv_softplus(1.0_f64)],
-            [-1.0_f64, inv_softplus(1.0_f64)],
-            [2.0_f64, inv_softplus(1.0_f64)]
+            [0.0_f64, 1.0_f64],
+            [1.0_f64, 1.0_f64],
+            [-1.0_f64, 1.0_f64],
+            [2.0_f64, 1.0_f64]
         ]);
 
         let expected_ll = array![

@@ -65,9 +65,14 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
                 &self.state_i,
                 &mut self.state_j,
             );
-            self.accept_proposed_state();
-            self.chains
-                .record_state(&self.state_i.get_state_matrix().to_owned());
+            self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
+
+            let sampler_state = &self.state_i.get_state_matrix().to_owned();
+            self.chains.record_state(
+                &self
+                    .model
+                    .columnar_transform_internal_to_physical(sampler_state),
+            );
 
             let duration = start_time.elapsed();
 

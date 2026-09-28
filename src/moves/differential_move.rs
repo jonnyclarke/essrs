@@ -45,22 +45,22 @@ impl DifferentialMove {
 
         // Left
         let mut params = &anchor_vec + &direction_vec * nl;
-        let mut ll_l = model.log_likelihood(params.view());
+        let mut ll_l = model.internal_log_likelihood(params.view());
 
         while ll_l > ll_floor {
             nl *= 2.0; // multiple by 2 to expand faster as the fall-in is also binary-tree reduction
             params.assign(&(&anchor_vec + &direction_vec * nl));
-            ll_l = model.log_likelihood(params.view());
+            ll_l = model.internal_log_likelihood(params.view());
         }
 
         // Right
         params.assign(&(&anchor_vec + &direction_vec * nr));
-        let mut ll_r = model.log_likelihood(params.view());
+        let mut ll_r = model.internal_log_likelihood(params.view());
 
         while ll_r > ll_floor {
             nr *= 2.0;
             params.assign(&(&anchor_vec + &direction_vec * nr));
-            ll_r = model.log_likelihood(params.view());
+            ll_r = model.internal_log_likelihood(params.view());
         }
 
         LikelihoodBounds {
@@ -89,7 +89,7 @@ impl DifferentialMove {
 
         loop {
             params.assign(&(&anchor_vec + &direction_vec * shift));
-            let ll = model.log_likelihood(params.view());
+            let ll = model.internal_log_likelihood(params.view());
 
             if ll >= ll_floor {
                 return (ll, params);

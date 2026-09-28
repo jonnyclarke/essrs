@@ -4,7 +4,7 @@ use essrs::{
     moves::{MoveHandler, dummy_move::DummyMove},
     state::WalkerState,
 };
-use ndarray::ArrayView1;
+use ndarray::Array1;
 use rand::{SeedableRng, rngs::SmallRng};
 
 fn bench_move_handler(c: &mut Criterion) {
@@ -20,7 +20,7 @@ fn bench_move_handler(c: &mut Criterion) {
     struct DummyModel;
 
     impl LogLikelihoodModel for DummyModel {
-        fn log_likelihood(&self, _: ArrayView1<f64>) -> f64 {
+        fn log_likelihood(&self, _: Array1<f64>) -> f64 {
             0.0
         }
     }
