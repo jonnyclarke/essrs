@@ -1,6 +1,10 @@
+//! Module providing the different move (jump) options and handlers for managing combinations of move options
+
 pub mod differential_move;
 pub mod dummy_move;
 pub mod gaussian_move;
+
+use std::fmt;
 
 use rand::{Rng, RngCore};
 
@@ -28,11 +32,71 @@ pub struct MoveHandler {
     cumulative: Vec<f64>,
 }
 
+#[derive(Debug)]
+pub enum MoveHandlerError {
+    EmptyMoves,
+    EmptyProbabilities,
+    LengthMismatch { moves: usize, probabilities: usize },
+    InvalidProbability { index: usize, value: f64 },
+    ZeroTotalProbability,
+}
+
+impl fmt::Display for MoveHandlerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::EmptyMoves => write!(f, "at least one move is required"),
+            Self::EmptyProbabilities => write!(f, "at least one probability is required"),
+            Self::LengthMismatch {
+                moves,
+                probabilities,
+            } => write!(
+                f,
+                "number of moves ({moves}) does not match number of probabilities ({probabilities})"
+            ),
+            Self::InvalidProbability { index, value } => write!(
+                f,
+                "probability at index {index} is invalid: {value}; probabilities must be finite and non-negative"
+            ),
+            Self::ZeroTotalProbability => {
+                write!(f, "sum of probabilities must be greater than zero")
+            }
+        }
+    }
+}
+
+impl std::error::Error for MoveHandlerError {}
+
 impl MoveHandler {
-    pub fn new(vec_move: Vec<Box<dyn EnsembleMove>>, probability: Vec<f64>) -> Self {
-        assert!(probability.len() == vec_move.len());
+    pub fn new(
+        vec_move: Vec<Box<dyn EnsembleMove>>,
+        probability: Vec<f64>,
+    ) -> Result<Self, MoveHandlerError> {
+        if vec_move.is_empty() {
+            return Err(MoveHandlerError::EmptyMoves);
+        }
+
+        if probability.is_empty() {
+            return Err(MoveHandlerError::EmptyProbabilities);
+        }
+
+        if probability.len() != vec_move.len() {
+            return Err(MoveHandlerError::LengthMismatch {
+                moves: vec_move.len(),
+                probabilities: probability.len(),
+            });
+        }
+
+        for (index, &p) in probability.iter().enumerate() {
+            if !p.is_finite() || p < 0.0 {
+                return Err(MoveHandlerError::InvalidProbability { index, value: p });
+            }
+        }
 
         let total: f64 = probability.iter().sum();
+
+        if !total.is_finite() || total <= 0.0 {
+            return Err(MoveHandlerError::ZeroTotalProbability);
+        }
 
         let cumulative = probability
             .iter()
@@ -42,10 +106,10 @@ impl MoveHandler {
             })
             .collect::<Vec<_>>();
 
-        Self {
+        Ok(Self {
             vec_move,
             cumulative,
-        }
+        })
     }
 
     pub fn choose_move(&self, r: f64) -> usize {
@@ -79,6 +143,7 @@ impl Default for MoveHandler {
             ],
             vec![DIFFERENTIAL_MOVE_WEIGHT, GAUSSIAN_MOVE_WEIGHT],
         )
+        .unwrap()
     }
 }
 

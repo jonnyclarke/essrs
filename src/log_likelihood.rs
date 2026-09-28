@@ -1,4 +1,5 @@
 //! Log-likelihood models.
+//! Includes a library of common non-trivial log-likelihood functions for easy use.
 //!
 //! A note on parameter-spaces.
 //! The MCMC sampler utilises two separate parameter spaces.

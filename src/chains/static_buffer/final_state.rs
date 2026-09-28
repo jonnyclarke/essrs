@@ -4,6 +4,11 @@ use crate::{chains::static_buffer::StaticBuffer, ess::EnsembleSliceSamplerConfig
 
 impl<CONFIG: EnsembleSliceSamplerConfigTrait> StaticBuffer<CONFIG> {
     pub fn get_final_state(&self) -> ArrayView2<'_, f64> {
+        if self.n_stored == 0 {
+            panic!(
+                "You are requesting final state from a buffer into which no chains have been deposited..."
+            )
+        }
         self.chains.index_axis(Axis(0), self.n_stored - 1)
     }
 }
