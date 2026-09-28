@@ -69,6 +69,11 @@ Please see examples in dedicated directory.
 Current example:
 - Script to fit the mean and standard deviation of a set of points taking into account the errors on those points.
 
+```bash
+cargo run --example gaussian_1d_fit
+cargo run --example gaussian_1d_fit --release
+```
+
 ## License
 
 This project is licensed under the MIT License.

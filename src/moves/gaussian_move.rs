@@ -74,7 +74,7 @@ impl EnsembleMove for GaussianMove {
             let guess = &mean + &l * &z;
 
             let guess_array = Array1::from(guess.iter().cloned().collect::<Vec<f64>>());
-            let ll_guess = likelihood_model.log_likelihood(guess_array.view());
+            let ll_guess = likelihood_model.internal_log_likelihood(guess_array.view());
 
             if ll_guess >= ll_floor {
                 state_j.get_mut_ith_state_vector(i).assign(&guess_array);

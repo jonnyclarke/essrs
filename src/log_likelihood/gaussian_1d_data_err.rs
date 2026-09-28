@@ -1,10 +1,13 @@
 use std::marker::PhantomData;
 
-use ndarray::{Array2, ArrayView1};
+use ndarray::{Array1, Array2, ArrayView1};
 use rand_distr::{Distribution, LogNormal, Normal};
 
 use crate::{
-    functions::{likelihood::log_normalised_gaussian_s2, transforms::lj_softplus},
+    functions::{
+        likelihood::log_normalised_gaussian_s2,
+        transforms::{apply_transform_column, inv_softplus, lj_softplus_inplace, softplus},
+    },
     log_likelihood::LogLikelihoodModel,
 };
 
@@ -31,11 +34,36 @@ impl GaussianLl1dDataErrors {
 }
 
 impl LogLikelihoodModel for GaussianLl1dDataErrors {
-    fn log_likelihood(&self, parameters: ArrayView1<f64>) -> f64 {
+    fn columnar_transform_physical_to_internal(&self, physical: &Array2<f64>) -> Array2<f64> {
+        let mut internal = physical.to_owned();
+        apply_transform_column(inv_softplus, &mut internal, 1);
+
+        internal
+    }
+
+    fn columnar_transform_internal_to_physical(&self, internal: &Array2<f64>) -> Array2<f64> {
+        let mut physical = internal.to_owned();
+        apply_transform_column(softplus, &mut physical, 1);
+        physical
+    }
+
+    fn convert_internal_to_physical_tracking_ll_warp(
+        &self,
+        parameters: ArrayView1<f64>,
+    ) -> (f64, Array1<f64>) {
+        let mut ll = 0.0;
+
+        let mut modified_parameters = parameters.to_owned();
+
+        lj_softplus_inplace(&mut modified_parameters[1], &mut ll);
+
+        (ll, modified_parameters)
+    }
+    fn log_likelihood(&self, parameters: Array1<f64>) -> f64 {
         let mut ll = 0.0;
 
         let mu = parameters[0];
-        let sigma2 = lj_softplus(parameters[1], &mut ll).powi(2);
+        let sigma2 = parameters[1].powi(2);
 
         let data_values = self.get_data_values();
         let data_errors = self.get_data_errors();
@@ -94,7 +122,7 @@ mod tests {
         // Parameters: mu = 2.0, log_sigma = ln(1.0) = 0.0
         let parameters = array![2.0, inv_softplus(1.0)];
 
-        let ll = model.log_likelihood(parameters.view());
+        let ll = model.internal_log_likelihood(parameters.view());
 
         // Expected: manually compute negative half sum of squared z-scores plus log term
         // z = (x - mu) / sigma = [-1, 0, 1], z^2 sum = 2

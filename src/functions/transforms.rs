@@ -18,6 +18,17 @@ where
     out
 }
 
+use ndarray::Array2;
+
+pub fn apply_transform_column<F>(f: F, array: &mut Array2<f64>, col: usize)
+where
+    F: Fn(f64) -> f64,
+{
+    for x in array.column_mut(col).iter_mut() {
+        *x = f(*x);
+    }
+}
+
 // Function to apply the exponential change of variable
 pub fn lj_exp(x: f64, ll: &mut f64) -> f64 {
     *ll += x;
@@ -56,6 +67,17 @@ pub fn lj_softplus(x: f64, ll: &mut f64) -> f64 {
     y
 }
 
+pub fn softplus(x: f64) -> f64 {
+    log_sum_exp(0.0, x).unwrap()
+}
+
+pub fn lj_softplus_inplace(x: &mut f64, ll: &mut f64) {
+    let y = log_sum_exp(0.0, *x).unwrap();
+
+    *ll += *x - y;
+    *x = y;
+}
+
 /// Apply the inverse of the softplus.
 /// [Can be useful for passing initial values in constrained space]
 ///
@@ -69,6 +91,9 @@ pub fn lj_softplus(x: f64, ll: &mut f64) -> f64 {
 /// # Returns
 /// * `x` - the corresponding value in unconstrained space
 pub fn inv_softplus(y: f64) -> f64 {
+    if y <= 0.0 {
+        panic!("Invalid value passed to inv softplus: {}", y)
+    }
     log_diff_exp(y, 0.0).unwrap()
 }
 
