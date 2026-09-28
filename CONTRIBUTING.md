@@ -9,12 +9,17 @@ It is recommended to follow the ordering prescribed below as adding unit-tests a
 
 ## Unit Testing
 
-Please ensure all additional code is fully unit tested.
-The following will apply the same testing routine as is used in the github-actions check.
+Please ensure all additional code is fully tested. This includes both unit,
 ```bash
-cargo coverage
+cargo coverage-unit
 ```
-This will create a report of the coverage within the repository which can be opened using
+and integration,
+```bash
+cargo coverage-integration
+```
+tests which replicate the testing procedures used within the CI/CD pipeline.
+
+The above commands will create reports of the coverage within the repository which can be opened using
 ```bash
 open tarpaulin-report.html
 ```
