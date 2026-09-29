@@ -11,9 +11,9 @@ use tempfile::NamedTempFile;
 
 #[test]
 fn test_normal_distribution_with_errors() {
-    let data = helper_generate_random_gaussian_points(50);
+    let data = helper_generate_random_gaussian_points(100);
 
-    const N_STEPS: usize = 100;
+    const N_STEPS: usize = 200;
     const N_PARAMETERS: usize = 2;
     const N_WALKERS: usize = 12;
 
@@ -44,7 +44,7 @@ fn test_normal_distribution_with_errors() {
     ess.initialise(&start);
 
     let move_handler = MoveHandler::default();
-    ess.run_sampler(move_handler);
+    ess.run_sampler(200, move_handler);
 
     let tmp_file = NamedTempFile::new().unwrap();
     let path = tmp_file.path();

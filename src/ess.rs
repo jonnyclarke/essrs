@@ -54,8 +54,19 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
             .assign(&self.state_j.get_mut_ll_vector());
     }
 
-    pub fn run_sampler(&mut self, move_handler: MoveHandler) {
+    pub fn run_sampler(&mut self, n_burn_in: usize, move_handler: MoveHandler) {
         let start_time = Instant::now();
+
+        // we allow burn in to eliminate effect on chains of the starting point
+        for _ in 1..n_burn_in {
+            move_handler.distribute_jump(
+                &mut self.rng,
+                &self.model,
+                &self.state_i,
+                &mut self.state_j,
+            );
+            self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
+        }
 
         for i in 1..=CONFIG::MAX_N_STEPS {
             info!(iteration = i);

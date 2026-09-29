@@ -6,7 +6,12 @@ use ndarray::Array1;
 use rand::RngCore;
 use rand_distr::{Distribution, StandardNormal};
 
-use crate::{log_likelihood::LogLikelihoodModel, moves::EnsembleMove, state::WalkerState};
+use crate::{
+    log_likelihood::LogLikelihoodModel,
+    moves::EnsembleMove,
+    slice::{step_in, step_out},
+    state::WalkerState,
+};
 
 pub struct GaussianMove {}
 
@@ -26,7 +31,7 @@ impl EnsembleMove for GaussianMove {
     fn jump(
         &self,
         rng: &mut dyn RngCore,
-        likelihood_model: &dyn LogLikelihoodModel,
+        log_likelihood_model: &dyn LogLikelihoodModel,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
     ) {
@@ -69,22 +74,29 @@ impl EnsembleMove for GaussianMove {
             // get the threshold for acceptance
             let ll_floor = state_i.get_ith_ll(i) + self.get_likelihood_floor(rng);
 
+            let current = state_i.get_ith_state_vector(i).to_owned();
+
             let z = DVector::from_iterator(dim, (0..dim).map(|_| StandardNormal.sample(rng)));
+            let direction = Array1::from((&l * &z).iter().cloned().collect::<Vec<f64>>());
 
-            let guess = &mean + &l * &z;
+            let search_bounds = step_out(
+                log_likelihood_model,
+                current.view(),
+                direction.view(),
+                ll_floor,
+            );
 
-            let guess_array = Array1::from(guess.iter().cloned().collect::<Vec<f64>>());
-            let ll_guess = likelihood_model.internal_log_likelihood(guess_array.view());
+            let (ll, accepted) = step_in(
+                rng,
+                log_likelihood_model,
+                current.view(),
+                direction.view(),
+                search_bounds,
+                ll_floor,
+            );
 
-            if ll_guess >= ll_floor {
-                state_j.get_mut_ith_state_vector(i).assign(&guess_array);
-                *state_j.get_mut_ith_ll(i) = ll_guess;
-            } else {
-                state_j
-                    .get_mut_ith_state_vector(i)
-                    .assign(&state_i.get_ith_state_vector(i));
-                *state_j.get_mut_ith_ll(i) = state_i.get_ith_ll(i)
-            }
+            state_j.get_mut_ith_state_vector(i).assign(&accepted);
+            *state_j.get_mut_ith_ll(i) = ll;
         }
     }
 }

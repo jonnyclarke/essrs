@@ -52,7 +52,7 @@ fn main() {
 
     ess.initialise(&start); // compute log-likelihood of initial positions
     let move_handler = MoveHandler::default(); // use default move setup 90% differential + 10% gaussian 
-    ess.run_sampler(move_handler); // run sampler
+    ess.run_sampler(100, move_handler); // run sampler
 
     ess.display_parameter_summaries()
 }
