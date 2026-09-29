@@ -6,7 +6,12 @@ use ndarray::Array1;
 use rand::RngCore;
 use rand_distr::{Distribution, StandardNormal};
 
-use crate::{log_likelihood::LogLikelihoodModel, moves::EnsembleMove, state::WalkerState,     slice::{step_out, step_in}};
+use crate::{
+    log_likelihood::LogLikelihoodModel,
+    moves::EnsembleMove,
+    slice::{step_in, step_out},
+    state::WalkerState,
+};
 
 pub struct GaussianMove {}
 
@@ -70,14 +75,9 @@ impl EnsembleMove for GaussianMove {
             let ll_floor = state_i.get_ith_ll(i) + self.get_likelihood_floor(rng);
 
             let current = state_i.get_ith_state_vector(i).to_owned();
-            
+
             let z = DVector::from_iterator(dim, (0..dim).map(|_| StandardNormal.sample(rng)));
-            let direction = Array1::from(
-                (&l * &z)
-                .iter()
-                .cloned()
-                .collect::<Vec<f64>>()
-            );
+            let direction = Array1::from((&l * &z).iter().cloned().collect::<Vec<f64>>());
 
             let search_bounds = step_out(
                 log_likelihood_model,
@@ -85,7 +85,7 @@ impl EnsembleMove for GaussianMove {
                 direction.view(),
                 ll_floor,
             );
-            
+
             let (ll, accepted) = step_in(
                 rng,
                 log_likelihood_model,

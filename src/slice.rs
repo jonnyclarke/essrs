@@ -2,9 +2,7 @@
 use ndarray::{Array1, ArrayView1};
 use rand::{Rng, RngCore};
 
-use crate::{
-    log_likelihood::LogLikelihoodModel
-};
+use crate::log_likelihood::LogLikelihoodModel;
 
 /// Structure storing information on the likelihood boundaries following the step-out part of the algorithm.
 /// This will be adjusted during step-in until a valid point is found.

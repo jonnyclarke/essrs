@@ -9,14 +9,14 @@
 //! | We step in; we randomly sample within the range [v0 - n * d, v0 + m * d] until, at (v0', l0') the log-likelihood is greater than the acceptance threshold.
 //! | The new point v0', and corresponding likelihood, l0', are stored as next element on the MCMC walk.
 
-use ndarray::{Array1};
-use rand::{RngCore};
+use ndarray::Array1;
+use rand::RngCore;
 
 use crate::{
     log_likelihood::LogLikelihoodModel,
     moves::EnsembleMove,
     random::{get_rn_not, get_rn_not_or},
-    slice::{step_out, step_in},
+    slice::{step_in, step_out},
     state::WalkerState,
 };
 
@@ -53,7 +53,7 @@ impl EnsembleMove for DifferentialMove {
             let ll_floor = state_i.get_ith_ll(i) + self.get_likelihood_floor(rng);
 
             let current = state_i.get_ith_state_vector(i).to_owned();
-            
+
             let l = get_rn_not(rng, n_walkers, i);
             let r = get_rn_not_or(rng, n_walkers, i, l);
             let direction = self.get_vector(state_i, l, r);

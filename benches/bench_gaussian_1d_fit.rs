@@ -41,7 +41,7 @@ fn fit_gaussian(data: Array2<f64>) -> () {
     ess.initialise(&start);
 
     let move_handler = MoveHandler::default();
-    ess.run_sampler(move_handler);
+    ess.run_sampler(0, move_handler);
 }
 
 fn bench_gaussian_1d_fit(c: &mut Criterion) {
