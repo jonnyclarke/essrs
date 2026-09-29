@@ -16,13 +16,13 @@ fn bench_move_handler(c: &mut Criterion) {
         vec![Box::new(DummyMove::new()), Box::new(DummyMove::new())],
         vec![0.9, 1.0],
     )
-    .unwrap();
+    .expect("Move handler 'new' call has failed . . .");
 
     struct DummyModel;
 
     impl LogLikelihoodModel for DummyModel {
-        fn log_likelihood(&self, _: Array1<f64>) -> f64 {
-            0.0
+        fn log_likelihood(&self, _: &Array1<f64>) -> anyhow::Result<f64> {
+            Ok(0.0)
         }
     }
 

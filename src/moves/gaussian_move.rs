@@ -1,3 +1,4 @@
+use anyhow;
 use nalgebra::{Cholesky, DMatrix, DVector};
 use ndarray::Array1;
 // This struct takes the current state and computes the covariance matrix
@@ -5,6 +6,7 @@ use ndarray::Array1;
 // then it accepts the jump.
 use rand::RngCore;
 use rand_distr::{Distribution, StandardNormal};
+use thiserror::Error;
 
 use crate::{
     log_likelihood::LogLikelihoodModel,
@@ -12,6 +14,15 @@ use crate::{
     slice::{step_in, step_out},
     state::WalkerState,
 };
+
+#[derive(Debug, Error)]
+pub enum GaussianMoveError {
+    #[error("failure converting state matrix to a slice")]
+    StateMatrixToSliceError,
+
+    #[error("failure converting covariance matrix into a Cholesky object")]
+    CovarianceToCholeskyError,
+}
 
 pub struct GaussianMove {}
 
@@ -34,13 +45,15 @@ impl EnsembleMove for GaussianMove {
         log_likelihood_model: &dyn LogLikelihoodModel,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
-    ) {
+    ) -> anyhow::Result<()> {
         let state_matrix = state_i.get_state_matrix().to_owned();
 
         let mat = DMatrix::from_row_slice(
             state_matrix.nrows(),
             state_matrix.ncols(),
-            state_matrix.as_slice().unwrap(),
+            state_matrix
+                .as_slice()
+                .ok_or(GaussianMoveError::StateMatrixToSliceError)?,
         );
 
         let mean =
@@ -67,7 +80,7 @@ impl EnsembleMove for GaussianMove {
             }
         }
         // Obtain Cholesky matrix
-        let chol = Cholesky::new(cov).unwrap();
+        let chol = Cholesky::new(cov).ok_or(GaussianMoveError::CovarianceToCholeskyError)?;
         let l = chol.l();
 
         for i in 0..state_i.get_ll_vector().len() {
@@ -84,7 +97,7 @@ impl EnsembleMove for GaussianMove {
                 current.view(),
                 direction.view(),
                 ll_floor,
-            );
+            )?;
 
             let (ll, accepted) = step_in(
                 rng,
@@ -93,10 +106,12 @@ impl EnsembleMove for GaussianMove {
                 direction.view(),
                 search_bounds,
                 ll_floor,
-            );
+            )?;
 
             state_j.get_mut_ith_state_vector(i).assign(&accepted);
             *state_j.get_mut_ith_ll(i) = ll;
         }
+
+        Ok(())
     }
 }

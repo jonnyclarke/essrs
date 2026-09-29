@@ -1,3 +1,4 @@
+use anyhow;
 use criterion::{Criterion, criterion_group, criterion_main};
 use essrs::{
     chains::static_buffer::StaticBuffer,
@@ -9,7 +10,7 @@ use essrs::{
 };
 use ndarray::{Array2, array};
 
-fn fit_gaussian(data: Array2<f64>) -> () {
+fn fit_gaussian(data: Array2<f64>) -> anyhow::Result<()> {
     const N_STEPS: usize = 100;
     const N_PARAMETERS: usize = 2;
     const N_WALKERS: usize = 12;
@@ -38,10 +39,12 @@ fn fit_gaussian(data: Array2<f64>) -> () {
         [0.101, 0.31],
     ];
 
-    ess.initialise(&start);
+    ess.initialise(&start)?;
 
     let move_handler = MoveHandler::default();
-    ess.run_sampler(0, move_handler);
+    ess.run_sampler(0, move_handler)?;
+
+    Ok(())
 }
 
 fn bench_gaussian_1d_fit(c: &mut Criterion) {
@@ -49,8 +52,10 @@ fn bench_gaussian_1d_fit(c: &mut Criterion) {
     group.sample_size(10);
     group.bench_function("fit 1D Gaussian 1e6 points", |b| {
         b.iter(|| {
-            let data = helper_generate_random_gaussian_points(1_000);
-            fit_gaussian(std::hint::black_box(data));
+            let data =
+                helper_generate_random_gaussian_points(1_000).expect("Error generating data . . .");
+            fit_gaussian(std::hint::black_box(data))
+                .expect("Gaussian fitting to black box has failed . . .");
         })
     });
     group.finish();

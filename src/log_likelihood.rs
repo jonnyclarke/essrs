@@ -13,17 +13,42 @@
 
 pub mod gaussian_1d_data_err;
 
+use anyhow;
 use ndarray::{Array1, Array2, ArrayView1};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum LogLikelihoodError {
+    #[error("log likelihood determined to be NaN for parameters: {params}")]
+    LogLikelihoodIsNan { params: Array1<f64> },
+
+    #[error("log likelihood determined to be infinite for parameters: {params}")]
+    LogLikelihoodIsInfinite { params: Array1<f64> },
+
+    #[error("{context_string}:\n{source}")]
+    UserDefLogLikelihoodFnError {
+        context_string: &'static str,
+
+        #[source]
+        source: anyhow::Error,
+    },
+}
 
 /// Trait for valid log-likelihood models.
 pub trait LogLikelihoodModel {
     /// Transform initial conditions into the internal phase space
-    fn columnar_transform_physical_to_internal(&self, parameters: &Array2<f64>) -> Array2<f64> {
-        parameters.to_owned()
+    fn columnar_transform_physical_to_internal(
+        &self,
+        parameters: &Array2<f64>,
+    ) -> anyhow::Result<Array2<f64>> {
+        Ok(parameters.to_owned())
     }
 
-    fn columnar_transform_internal_to_physical(&self, parameters: &Array2<f64>) -> Array2<f64> {
-        parameters.to_owned()
+    fn columnar_transform_internal_to_physical(
+        &self,
+        parameters: &Array2<f64>,
+    ) -> anyhow::Result<Array2<f64>> {
+        Ok(parameters.to_owned())
     }
 
     /// Transform parameter vector into physical space from internal space.
@@ -31,18 +56,90 @@ pub trait LogLikelihoodModel {
     fn convert_internal_to_physical_tracking_ll_warp(
         &self,
         parameters: ArrayView1<f64>,
-    ) -> (f64, Array1<f64>) {
-        (0.0, parameters.to_owned())
+    ) -> anyhow::Result<(f64, Array1<f64>)> {
+        Ok((0.0, parameters.to_owned()))
+    }
+
+    /// Returns the log-likelihood for a given set of parameters.
+    fn log_likelihood(&self, parameters: &Array1<f64>) -> anyhow::Result<f64>;
+}
+
+pub trait WrappedLogLikelihoodModel: LogLikelihoodModel {
+    fn wrapped_columnar_transform_physical_to_internal(
+        &self,
+        parameters: &Array2<f64>,
+    ) -> Result<Array2<f64>, LogLikelihoodError> {
+        let x = self.columnar_transform_physical_to_internal(parameters)
+            .map_err(
+                |source| LogLikelihoodError::UserDefLogLikelihoodFnError {
+                    context_string: "Parameter conversion, columnwise, from physical to internal scale has failed",
+                    source,
+                }
+            )?;
+
+        Ok(x)
+    }
+
+    fn wrapped_columnar_transform_internal_to_physical(
+        &self,
+        parameters: &Array2<f64>,
+    ) -> Result<Array2<f64>, LogLikelihoodError> {
+        let x = self.columnar_transform_internal_to_physical(parameters)
+            .map_err(
+                |source| LogLikelihoodError::UserDefLogLikelihoodFnError {
+                    context_string: "Parameter conversion, columnwise, from internal to physical scale has failed",
+                    source,
+                }
+            )?;
+
+        Ok(x)
+    }
+
+    fn wrapped_convert_internal_to_physical_tracking_ll_warp(
+        &self,
+        parameters: ArrayView1<f64>,
+    ) -> Result<(f64, Array1<f64>), LogLikelihoodError> {
+        let x = self.convert_internal_to_physical_tracking_ll_warp(parameters)
+            .map_err(
+                |source| LogLikelihoodError::UserDefLogLikelihoodFnError {
+                    context_string: "parameter conversion, tracking log-jacobian contribution, from internal to physical scale has failed",
+                    source,
+                }
+            )?;
+
+        Ok(x)
     }
 
     /// DO NOT RE-IMPLEMENT! -- extract to a different trait that cannot be re-implemented.
     /// this is the only time the users log-likelihood function is called and we wrap it in order to
-    fn internal_log_likelihood(&self, parameters: ArrayView1<f64>) -> f64 {
+    fn wrapped_log_likelihood(
+        &self,
+        parameters: ArrayView1<f64>,
+    ) -> Result<f64, LogLikelihoodError> {
         let (ll_phase_transform, modified_parameters) =
-            self.convert_internal_to_physical_tracking_ll_warp(parameters);
+            self.wrapped_convert_internal_to_physical_tracking_ll_warp(parameters)?;
 
-        ll_phase_transform + self.log_likelihood(modified_parameters)
+        let ll_parameters = self
+            .log_likelihood(&modified_parameters)
+            .map_err(|source| LogLikelihoodError::UserDefLogLikelihoodFnError {
+                context_string: "user-defined log-likelihood function has failed",
+                source,
+            })?;
+
+        if ll_parameters.is_nan() {
+            return Err(LogLikelihoodError::LogLikelihoodIsNan {
+                params: modified_parameters,
+            });
+        }
+
+        if ll_parameters.is_infinite() {
+            return Err(LogLikelihoodError::LogLikelihoodIsInfinite {
+                params: modified_parameters,
+            });
+        }
+
+        Ok(ll_phase_transform + ll_parameters)
     }
-    /// Returns the log-likelihood for a given set of parameters.
-    fn log_likelihood(&self, parameters: Array1<f64>) -> f64;
 }
+
+impl<T: LogLikelihoodModel + ?Sized> WrappedLogLikelihoodModel for T {}

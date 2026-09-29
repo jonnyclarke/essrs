@@ -42,34 +42,38 @@ mod tests {
         }
     }
     #[test]
-    fn test_write_final_walkers_to_buffer() {
+    fn test_write_final_walkers_to_buffer() -> anyhow::Result<()> {
         let state = make_test_state_obj();
         let mut out = Vec::new();
 
-        state.write_final_log_likelihood(&mut out).unwrap();
+        state.write_final_log_likelihood(&mut out)?;
 
-        let s = String::from_utf8(out).unwrap();
+        let s = String::from_utf8(out)?;
 
         let expected = "-0.1\n-0.2\n";
 
         assert_eq!(s, expected);
+
+        Ok(())
     }
 
     #[test]
-    fn test_dump_final_walkers_to_file() {
+    fn test_dump_final_walkers_to_file() -> anyhow::Result<()> {
         let state = make_test_state_obj();
 
         // Use a temporary file for testing
-        let tmp_file = NamedTempFile::new().unwrap();
+        let tmp_file = NamedTempFile::new()?;
         let path = tmp_file.path();
 
-        state.dump_final_log_likelihood(path).unwrap();
+        state.dump_final_log_likelihood(path)?;
 
-        let contents = fs::read_to_string(path).unwrap();
+        let contents = fs::read_to_string(path)?;
 
         // TODO: Replace this with your actual expected output
         let expected = "-0.1\n-0.2\n";
 
         assert_eq!(contents, expected);
+
+        Ok(())
     }
 }

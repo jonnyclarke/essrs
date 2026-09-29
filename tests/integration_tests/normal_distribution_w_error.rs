@@ -1,3 +1,4 @@
+use anyhow;
 use essrs::{
     chains::static_buffer::StaticBuffer,
     ess::{EnsembleSliceSampler, EnsembleSliceSamplerConfig},
@@ -10,8 +11,8 @@ use ndarray::array;
 use tempfile::NamedTempFile;
 
 #[test]
-fn test_normal_distribution_with_errors() {
-    let data = helper_generate_random_gaussian_points(100);
+fn test_normal_distribution_with_errors() -> anyhow::Result<()> {
+    let data = helper_generate_random_gaussian_points(100)?;
 
     const N_STEPS: usize = 200;
     const N_PARAMETERS: usize = 2;
@@ -41,20 +42,22 @@ fn test_normal_distribution_with_errors() {
         [0.101, 0.31],
     ];
 
-    ess.initialise(&start);
+    ess.initialise(&start)?;
 
     let move_handler = MoveHandler::default();
-    ess.run_sampler(200, move_handler);
+    ess.run_sampler(200, move_handler)?;
 
-    let tmp_file = NamedTempFile::new().unwrap();
+    let tmp_file = NamedTempFile::new()?;
     let path = tmp_file.path();
 
     let _ = ess.chains.dump_final_walkers(path);
 
-    let tmp_file = NamedTempFile::new().unwrap();
+    let tmp_file = NamedTempFile::new()?;
     let path = tmp_file.path();
 
     let _ = ess.save_log_likelihood(path);
 
-    ess.display_parameter_summaries()
+    ess.display_parameter_summaries();
+
+    Ok(())
 }
