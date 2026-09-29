@@ -23,6 +23,8 @@ pub mod moves;
 /// Implementation of the randomised selection algorithms required by ensemble samplers
 pub mod random;
 
+pub mod slice;
+
 /// State handler managing transition from i'th MCMC state to (i+1)'th state
 pub mod state;
 
