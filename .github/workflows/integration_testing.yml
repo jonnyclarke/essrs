@@ -1,0 +1,29 @@
+name: Test-Integration
+
+on:
+  push:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Show build environment
+        run: |
+          rustc -vV
+          cargo -V
+          uname -a
+          rustup show
+
+      - name: Run Integration Tests
+        run: |
+          cargo test --workspace --test integration_tests
+
