@@ -15,7 +15,8 @@ fn bench_move_handler(c: &mut Criterion) {
     let move_handler = MoveHandler::new(
         vec![Box::new(DummyMove::new()), Box::new(DummyMove::new())],
         vec![0.9, 1.0],
-    );
+    )
+    .unwrap();
 
     struct DummyModel;
 

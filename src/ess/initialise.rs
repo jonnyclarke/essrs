@@ -4,12 +4,12 @@ use ndarray::Array2;
 
 use crate::{
     chains::ChainBuffer,
-    ess::{EnsemblSliceSampler, EnsembleSliceSamplerConfigTrait},
+    ess::{EnsembleSliceSampler, EnsembleSliceSamplerConfigTrait},
     log_likelihood::LogLikelihoodModel,
 };
 
 impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSamplerConfigTrait>
-    EnsemblSliceSampler<CHAINS, MODEL, CONFIG>
+    EnsembleSliceSampler<CHAINS, MODEL, CONFIG>
 {
     pub fn initialise(&mut self, initial: &Array2<f64>) {
         self.state_i

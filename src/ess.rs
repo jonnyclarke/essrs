@@ -23,7 +23,7 @@ pub struct EnsembleSliceSamplerConfig<
     const N_PARAMETERS: usize,
 > {}
 
-pub struct EnsemblSliceSampler<
+pub struct EnsembleSliceSampler<
     CHAINS: ChainBuffer,
     MODEL: LogLikelihoodModel,
     CONFIG: EnsembleSliceSamplerConfigTrait,
@@ -40,7 +40,7 @@ pub struct EnsemblSliceSampler<
 }
 
 impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSamplerConfigTrait>
-    EnsemblSliceSampler<CHAINS, MODEL, CONFIG>
+    EnsembleSliceSampler<CHAINS, MODEL, CONFIG>
 {
     pub fn accept_proposed_state(&mut self) {
         // let mut state0 = self.state_i.get_mut_state_matrix();

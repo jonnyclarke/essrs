@@ -1,6 +1,6 @@
 use essrs::{
     chains::static_buffer::StaticBuffer,
-    ess::{EnsemblSliceSampler, EnsembleSliceSamplerConfig},
+    ess::{EnsembleSliceSampler, EnsembleSliceSamplerConfig},
     log_likelihood::gaussian_1d_data_err::{
         GaussianLl1dDataErrors, helper_generate_random_gaussian_points,
     },
@@ -22,7 +22,7 @@ fn test_normal_distribution_with_errors() {
     let chains = StaticBuffer::<Config>::new();
     let model = GaussianLl1dDataErrors::new(data);
 
-    let mut ess = EnsemblSliceSampler::<StaticBuffer<Config>, GaussianLl1dDataErrors, Config>::new(
+    let mut ess = EnsembleSliceSampler::<StaticBuffer<Config>, GaussianLl1dDataErrors, Config>::new(
         chains, model,
     );
 

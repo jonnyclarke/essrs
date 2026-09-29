@@ -5,7 +5,7 @@ pub mod helpers {
 
     use crate::{
         chains::static_buffer::StaticBuffer,
-        ess::{EnsemblSliceSampler, EnsembleSliceSamplerConfig},
+        ess::{EnsembleSliceSampler, EnsembleSliceSamplerConfig},
         log_likelihood::gaussian_1d_data_err::GaussianLl1dDataErrors,
     };
 
@@ -26,13 +26,14 @@ pub mod helpers {
     }
 
     pub fn build_test_ess()
-    -> EnsemblSliceSampler<StaticBuffer<TestingConfig>, GaussianLl1dDataErrors, TestingConfig> {
+    -> EnsembleSliceSampler<StaticBuffer<TestingConfig>, GaussianLl1dDataErrors, TestingConfig>
+    {
         let data = array![[0.0_f64, 0.0_f64]];
 
         let chains = StaticBuffer::<TestingConfig>::new();
         let model = GaussianLl1dDataErrors::new(data);
 
-        let ess = EnsemblSliceSampler::<
+        let ess = EnsembleSliceSampler::<
             StaticBuffer<TestingConfig>,
             GaussianLl1dDataErrors,
             TestingConfig,

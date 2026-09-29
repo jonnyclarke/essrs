@@ -1,7 +1,7 @@
 # essrs
 
 [![CI](https://github.com/jonnyclarke/essrs/actions/workflows/coverage_test_unit.yml/badge.svg)]
-[![CI](https://github.com/jonnyclarke/essrs/actions/workflows/coverage_test_integration.yml/badge.svg)]
+[![CI](https://github.com/jonnyclarke/essrs/actions/workflows/integration_testing.yml/badge.svg)]
 [![CI](https://github.com/jonnyclarke/essrs/actions/workflows/clippy.yml/badge.svg)]
 [![CI](https://github.com/jonnyclarke/essrs/actions/workflows/rustfmt.yml/badge.svg)]
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]
@@ -49,8 +49,13 @@ Empirically it works well to mix these moves since gaussian move can mitigate th
 
 ## Caveats
 
-- It is necessary to run at least 2 times the number of walkers as there are parameters to avoid getting stuck in lower dimensional subspaces
-
+- The differential move scheme contains implicit requirements on the number of walkers that must be used. This limit is given as
+```
+MAX(3, 2 * n_dimensions)
+```
+where `n_dimensions` is the number of parameters being optimised.
+The minimum number of 3 is required because, given the i'th walker, the algorithm always requires at least two more positions to define the direction vector along which we jump. Thus 3 is the minimum number of walkers that can be used.
+The factor `2 * n_dimensions` is required to ensure that the walkers do not get stuck in a dimensional sub-space which would leave them unable to fully explore the full parameter space.
 
 ## Usage
 
@@ -73,6 +78,21 @@ Current example:
 cargo run --example gaussian_1d_fit
 cargo run --example gaussian_1d_fit --release
 ```
+
+```
+
+## Limitations / Status
+- This project is currently only available as a github repo and has no official release. It is not currently suitable for production grade implementations.
+- Current implementation is locked to f64. Generalising to f32 may require extensive refactoring and is not something I am currently looking to do.
+
+## Future enhancements
+
+The following is a non-exhaustive list of future enhancements I would like to make to the repository.
+- Publishing on crates.io for better accesibility.
+- Python bindings for pre-defined log-likelihood functions for easy use.
+- Extended library of python bindings including: two-dimensional normal distribution fit with errors, GMM of two-dimensional normal distribution with errors.
+- Implementation of auto-correlation computation with auto-stop capabilities.
+
 
 ## License
 

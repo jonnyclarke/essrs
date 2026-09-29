@@ -1,3 +1,5 @@
+//! Log-likelihood function
+
 use std::marker::PhantomData;
 
 use ndarray::{Array1, Array2, ArrayView1};

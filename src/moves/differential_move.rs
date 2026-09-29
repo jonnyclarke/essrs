@@ -1,3 +1,14 @@
+//! This is the core jump algorithm used in conjunction with ensemble slice sampling.
+//!
+//! The core algorithm is as follows:
+//! | Walker `i` starts with parameter vector v0 and a likelihood l0.
+//! | We sample two additional and different parameter vectors, v1 and v2.
+//! | The difference between these two vectors then defines a direction vector: d = v2 - v1
+//! | We sample a random number in range 0 to 1 and take logarithm; this defines the acceptance boundary l_b = l0 + ln(rn)
+//! | We step out; we progressively test points in both directions, d and -d, from v0 until the log-likelihood falls below the acceptance boundary
+//! | We step in; we randomly sample within the range [v0 - n * d, v0 + m * d] until, at (v0', l0') the log-likelihood is greater than the acceptance threshold.
+//! | The new point v0', and corresponding likelihood, l0', are stored as next element on the MCMC walk.
+
 use ndarray::{Array1, ArrayView1};
 use rand::{Rng, RngCore};
 
@@ -8,6 +19,8 @@ use crate::{
     state::WalkerState,
 };
 
+/// Structure storing information on the likelihood boundaries following the step-out part of the algorithm.
+/// This will be adjusted during step-in until a valid point is found.
 struct LikelihoodBounds {
     nl: f64,
     nr: f64,

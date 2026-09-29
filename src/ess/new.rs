@@ -2,13 +2,13 @@ use std::marker::PhantomData;
 
 use crate::{
     chains::ChainBuffer,
-    ess::{EnsemblSliceSampler, EnsembleSliceSamplerConfigTrait},
+    ess::{EnsembleSliceSampler, EnsembleSliceSamplerConfigTrait},
     log_likelihood::LogLikelihoodModel,
     state::WalkerState,
 };
 
 impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSamplerConfigTrait>
-    EnsemblSliceSampler<CHAINS, MODEL, CONFIG>
+    EnsembleSliceSampler<CHAINS, MODEL, CONFIG>
 {
     pub fn new(chains: CHAINS, model: MODEL) -> Self {
         let nw = CONFIG::N_WALKERS;
