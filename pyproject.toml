@@ -1,0 +1,22 @@
+[project]
+name = "essrs"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+[build-system]
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+
+[tool.maturin]
+bindings = "pyo3"
+module-name = "essrs._essrs"
+python-source = "python"
+features = ["python"]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.3.0",
+    "ipython>=8.39.0",
+    "maturin>=1.15.0",
+    "numpy>=2.2.6",
+]

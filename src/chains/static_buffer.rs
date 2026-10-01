@@ -55,6 +55,10 @@ impl<CONFIG: EnsembleSliceSamplerConfigTrait> ChainBuffer for StaticBuffer<CONFI
         self.n_stored += 1;
     }
 
+    fn extract_state(&self) -> Array3<f64> {
+        self.chains.clone()
+    }
+
     fn extract_parameter_history(&self, i_walker: usize, i_parameter: usize) -> Array1<f64> {
         self.chains.slice(s![.., i_walker, i_parameter]).to_owned()
     }

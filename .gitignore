@@ -3,3 +3,10 @@
 # Coverage report outputs
 *.xml
 *.html
+
+# python build artifacts
+python/essrs/_essrs*
+__pycache__/
+
+# VScode configurations
+.vscode/
