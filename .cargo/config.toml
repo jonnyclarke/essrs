@@ -3,7 +3,7 @@
 coverage-unit = [
     "tarpaulin",
     "--workspace",
-    "--exclude-files", "tests/*",   # Exclude integration test code
+    "--exclude-files", "tests/*", "src/python_bindings/**/*.rs",   # Exclude integration test code
     "--out", "Html",
     "--lib"
 ]

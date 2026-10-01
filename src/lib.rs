@@ -28,5 +28,8 @@ pub mod slice;
 /// State handler managing transition from i'th MCMC state to (i+1)'th state
 pub mod state;
 
+#[cfg(feature = "python")]
+mod python_bindings;
+
 #[cfg(test)]
 pub mod testing;
