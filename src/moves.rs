@@ -4,9 +4,9 @@ pub mod differential_move;
 pub mod dummy_move;
 pub mod gaussian_move;
 
-use std::fmt;
-
+use anyhow;
 use rand::{Rng, RngCore};
+use thiserror::Error;
 
 use crate::{
     log_likelihood::LogLikelihoodModel,
@@ -24,7 +24,7 @@ pub trait EnsembleMove {
         log_likelihood_model: &dyn LogLikelihoodModel,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
-    );
+    ) -> anyhow::Result<()>;
 }
 
 pub struct MoveHandler {
@@ -32,39 +32,28 @@ pub struct MoveHandler {
     cumulative: Vec<f64>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum MoveHandlerError {
+    #[error("at least one move is required")]
     EmptyMoves,
+
+    #[error("at least one probability is required")]
     EmptyProbabilities,
+
+    #[error("number of moves ({moves}) does not match number of probabilities ({probabilities})")]
     LengthMismatch { moves: usize, probabilities: usize },
+
+    #[error(
+        "probability at index {index} is invalid: {value}; probabilities must be finite and non-negative"
+    )]
     InvalidProbability { index: usize, value: f64 },
+
+    #[error("sum of probabilities must be greater than zero")]
     ZeroTotalProbability,
-}
 
-impl fmt::Display for MoveHandlerError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::EmptyMoves => write!(f, "at least one move is required"),
-            Self::EmptyProbabilities => write!(f, "at least one probability is required"),
-            Self::LengthMismatch {
-                moves,
-                probabilities,
-            } => write!(
-                f,
-                "number of moves ({moves}) does not match number of probabilities ({probabilities})"
-            ),
-            Self::InvalidProbability { index, value } => write!(
-                f,
-                "probability at index {index} is invalid: {value}; probabilities must be finite and non-negative"
-            ),
-            Self::ZeroTotalProbability => {
-                write!(f, "sum of probabilities must be greater than zero")
-            }
-        }
-    }
+    #[error("unable to index against cumulative probability weights")]
+    InvalidCumulativeIndexing,
 }
-
-impl std::error::Error for MoveHandlerError {}
 
 impl MoveHandler {
     pub fn new(
@@ -112,8 +101,11 @@ impl MoveHandler {
         })
     }
 
-    pub fn choose_move(&self, r: f64) -> usize {
-        self.cumulative.iter().position(|&c| r < c).unwrap()
+    pub fn choose_move(&self, r: f64) -> Result<usize, MoveHandlerError> {
+        self.cumulative
+            .iter()
+            .position(|&c| r < c)
+            .ok_or(MoveHandlerError::InvalidCumulativeIndexing)
     }
 
     pub fn distribute_jump(
@@ -122,12 +114,14 @@ impl MoveHandler {
         log_likelihood_model: &dyn LogLikelihoodModel,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
-    ) {
+    ) -> anyhow::Result<()> {
         let r: f64 = rng.random();
 
-        let i = self.choose_move(r);
+        let i = self.choose_move(r)?;
 
-        self.vec_move[i].jump(rng, log_likelihood_model, state_i, state_j);
+        self.vec_move[i].jump(rng, log_likelihood_model, state_i, state_j)?;
+
+        Ok(())
     }
 }
 
@@ -143,7 +137,7 @@ impl Default for MoveHandler {
             ],
             vec![DIFFERENTIAL_MOVE_WEIGHT, GAUSSIAN_MOVE_WEIGHT],
         )
-        .unwrap()
+        .expect("built-in default move configuration is invalid")
     }
 }
 
@@ -155,7 +149,7 @@ mod tests {
     use crate::moves::{DIFFERENTIAL_MOVE_WEIGHT, GAUSSIAN_MOVE_WEIGHT, MoveHandler};
 
     #[test]
-    fn move_distributions() {
+    fn move_distributions() -> anyhow::Result<()> {
         let mut rng = rand::rng();
 
         let move_handler = MoveHandler::default();
@@ -167,7 +161,7 @@ mod tests {
 
         for _ in 0..N_ITERATIONS {
             let r: f64 = rng.random();
-            let i = move_handler.choose_move(r);
+            let i = move_handler.choose_move(r)?;
             counts[i] += 1;
         }
 
@@ -176,6 +170,8 @@ mod tests {
 
         assert!((p0 - DIFFERENTIAL_MOVE_WEIGHT).abs() < 0.002);
         assert!((p1 - GAUSSIAN_MOVE_WEIGHT).abs() < 0.002);
+
+        Ok(())
     }
 }
 
@@ -210,17 +206,19 @@ impl MoveHandlerDifferentialGaussian {
         log_likelihood_model: &dyn LogLikelihoodModel,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
-    ) {
+    ) -> anyhow::Result<()> {
         let use_gaussian_move: bool = self.choose_move();
 
         match use_gaussian_move {
             true => self
                 .move_gaussian
-                .jump(rng, log_likelihood_model, state_i, state_j),
+                .jump(rng, log_likelihood_model, state_i, state_j)?,
             false => self
                 .move_differential
-                .jump(rng, log_likelihood_model, state_i, state_j),
+                .jump(rng, log_likelihood_model, state_i, state_j)?,
         }
+
+        Ok(())
     }
 }
 

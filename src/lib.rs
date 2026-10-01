@@ -28,4 +28,5 @@ pub mod slice;
 /// State handler managing transition from i'th MCMC state to (i+1)'th state
 pub mod state;
 
-mod testing;
+#[cfg(test)]
+pub mod testing;

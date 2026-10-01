@@ -19,8 +19,9 @@ use crate::{
     slice::{step_in, step_out},
     state::WalkerState,
 };
-
+#[derive(Debug, PartialEq)]
 pub struct DifferentialMove {}
+
 impl DifferentialMove {
     pub fn new() -> Self {
         Self {}
@@ -46,7 +47,7 @@ impl EnsembleMove for DifferentialMove {
         log_likelihood_model: &dyn LogLikelihoodModel,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
-    ) {
+    ) -> anyhow::Result<()> {
         let n_walkers = state_i.n_walkers();
 
         for i in 0..n_walkers {
@@ -63,7 +64,7 @@ impl EnsembleMove for DifferentialMove {
                 current.view(),
                 direction.view(),
                 ll_floor,
-            );
+            )?;
 
             let (ll, accepted) = step_in(
                 rng,
@@ -72,10 +73,36 @@ impl EnsembleMove for DifferentialMove {
                 direction.view(),
                 search_bounds,
                 ll_floor,
-            );
+            )?;
 
             state_j.get_mut_ith_state_vector(i).assign(&accepted);
             *state_j.get_mut_ith_ll(i) = ll;
         }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    // use anyhow;
+    // use approx::assert_relative_eq;
+    // use rstest::rstest;
+    use ndarray::array;
+
+    use super::*;
+    use crate::testing::WalkerStateBuilder;
+
+    #[test]
+    fn test_get_vector() {
+        let state = WalkerStateBuilder::new()
+            .set_state_matrix(&array![[-1.0], [0.0], [1.0]])
+            .set_ll_array(&array![-1.0, 0.0, 1.0])
+            .construct();
+
+        let diff_move = DifferentialMove::default();
+
+        assert_eq!(array![1.0], diff_move.get_vector(&state, 2, 1))
     }
 }

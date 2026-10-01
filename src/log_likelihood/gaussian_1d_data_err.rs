@@ -2,13 +2,16 @@
 
 use std::marker::PhantomData;
 
+use anyhow;
 use ndarray::{Array1, Array2, ArrayView1};
 use rand_distr::{Distribution, LogNormal, Normal};
 
 use crate::{
     functions::{
         likelihood::log_normalised_gaussian_s2,
-        transforms::{apply_transform_column, inv_softplus, lj_softplus_inplace, softplus},
+        transforms::{
+            apply_transform_column, softplus, softplus_inverse, softplus_log_jacobian_inplace,
+        },
     },
     log_likelihood::LogLikelihoodModel,
 };
@@ -36,32 +39,40 @@ impl GaussianLl1dDataErrors {
 }
 
 impl LogLikelihoodModel for GaussianLl1dDataErrors {
-    fn columnar_transform_physical_to_internal(&self, physical: &Array2<f64>) -> Array2<f64> {
+    fn columnar_transform_physical_to_internal(
+        &self,
+        physical: &Array2<f64>,
+    ) -> anyhow::Result<Array2<f64>> {
         let mut internal = physical.to_owned();
-        apply_transform_column(inv_softplus, &mut internal, 1);
+        apply_transform_column(softplus_inverse, &mut internal, 1)?;
 
-        internal
+        Ok(internal)
     }
 
-    fn columnar_transform_internal_to_physical(&self, internal: &Array2<f64>) -> Array2<f64> {
+    fn columnar_transform_internal_to_physical(
+        &self,
+        internal: &Array2<f64>,
+    ) -> anyhow::Result<Array2<f64>> {
         let mut physical = internal.to_owned();
-        apply_transform_column(softplus, &mut physical, 1);
-        physical
+        apply_transform_column(softplus, &mut physical, 1)?;
+
+        Ok(physical)
     }
 
     fn convert_internal_to_physical_tracking_ll_warp(
         &self,
         parameters: ArrayView1<f64>,
-    ) -> (f64, Array1<f64>) {
+    ) -> anyhow::Result<(f64, Array1<f64>)> {
         let mut ll = 0.0;
 
         let mut modified_parameters = parameters.to_owned();
 
-        lj_softplus_inplace(&mut modified_parameters[1], &mut ll);
+        softplus_log_jacobian_inplace(&mut modified_parameters[1], &mut ll)?;
 
-        (ll, modified_parameters)
+        Ok((ll, modified_parameters))
     }
-    fn log_likelihood(&self, parameters: Array1<f64>) -> f64 {
+
+    fn log_likelihood(&self, parameters: &Array1<f64>) -> anyhow::Result<f64> {
         let mut ll = 0.0;
 
         let mu = parameters[0];
@@ -81,17 +92,17 @@ impl LogLikelihoodModel for GaussianLl1dDataErrors {
             })
             .sum::<f64>();
 
-        ll
+        Ok(ll)
     }
 }
 
-pub fn helper_generate_random_gaussian_points(n: usize) -> Array2<f64> {
+pub fn helper_generate_random_gaussian_points(n: usize) -> anyhow::Result<Array2<f64>> {
     let mut data = Vec::<f64>::with_capacity(n * 2);
 
-    let normal_v = Normal::<f64>::new(0.10, 0.80).unwrap();
-    let normal_e = LogNormal::<f64>::new(0.00, 0.10).unwrap();
+    let normal_v = Normal::<f64>::new(0.10, 0.80)?;
+    let normal_e = LogNormal::<f64>::new(0.00, 0.10)?;
 
-    let sampler = Normal::<f64>::new(0.00, 1.00).unwrap();
+    let sampler = Normal::<f64>::new(0.00, 1.00)?;
 
     let mut rng = rand::rng();
 
@@ -106,7 +117,9 @@ pub fn helper_generate_random_gaussian_points(n: usize) -> Array2<f64> {
         data.push(sigma);
     }
 
-    Array2::from_shape_vec((n, 2), data).unwrap()
+    let output = Array2::from_shape_vec((n, 2), data)?;
+
+    Ok(output)
 }
 
 #[cfg(test)]
@@ -115,39 +128,47 @@ mod tests {
     use ndarray::array;
 
     use super::*;
-    use crate::functions::transforms::inv_softplus;
+    use crate::{
+        functions::transforms::softplus_inverse, log_likelihood::WrappedLogLikelihoodModel,
+    };
 
     #[test]
-    fn test_log_likelihood_computation() {
+    fn test_log_likelihood_computation() -> anyhow::Result<()> {
         let model = GaussianLl1dDataErrors::new(array![[1.0, 0.0], [2.0, 0.0], [3.0, 0.0]]);
 
         // Parameters: mu = 2.0, log_sigma = ln(1.0) = 0.0
-        let parameters = array![2.0, inv_softplus(1.0)];
+        let parameters = array![2.0, softplus_inverse(1.0)?];
 
-        let ll = model.internal_log_likelihood(parameters.view());
+        let ll = model.wrapped_log_likelihood(parameters.view())?;
 
         // Expected: manually compute negative half sum of squared z-scores plus log term
         // z = (x - mu) / sigma = [-1, 0, 1], z^2 sum = 2
         // term1 = 2 * pi * sigma^2 = 2 * pi * 1 = 2pi
         // n * ln(term1) = 3 * ln(2pi)
         // log_likelihood = -0.5 * (3 ln(2pi) + 2)
-        let softplus_term = inv_softplus(1.0) - 1.0; // this accounts for the Jacobian change of variables.
+        let softplus_term = softplus_inverse(1.0)? - 1.0; // this accounts for the Jacobian change of variables.
         let expected = softplus_term - 0.5 * (3.0 * (2.0 * std::f64::consts::PI).ln() + 2.0);
 
         assert_relative_eq!(ll, expected, epsilon = 1e-12);
+
+        Ok(())
     }
 
     #[test]
-    fn test_helper_generate_random_gaussian_points_shape() {
+    fn test_helper_generate_random_gaussian_points_shape() -> anyhow::Result<()> {
         let n = 100;
-        let arr = helper_generate_random_gaussian_points(n);
+        let arr = helper_generate_random_gaussian_points(n)?;
         assert_eq!(arr.shape(), &[n, 2]);
+
+        Ok(())
     }
 
     #[test]
-    fn test_helper_generate_random_gaussian_points_is_finite() {
+    fn test_helper_generate_random_gaussian_points_is_finite() -> anyhow::Result<()> {
         let n = 100;
-        let arr = helper_generate_random_gaussian_points(n);
+        let arr = helper_generate_random_gaussian_points(n)?;
         assert!(arr.iter().all(|x| x.is_finite()));
+
+        Ok(())
     }
 }

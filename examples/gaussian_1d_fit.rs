@@ -10,7 +10,7 @@ use essrs::{
 use ndarray::array;
 use tracing_subscriber::fmt;
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     fmt()
         .with_timer(fmt::time::UtcTime::rfc_3339())
         .with_level(false)
@@ -20,7 +20,7 @@ fn main() {
     // Generate 1000 randomised data points
     // Sample a true position and an error. Then convolve position with a re-sampling of the error to get convolvedf data
     const N_DATA_POINTS: usize = 10_000;
-    let data = helper_generate_random_gaussian_points(N_DATA_POINTS);
+    let data = helper_generate_random_gaussian_points(N_DATA_POINTS)?;
 
     const N_STEPS: usize = 500; // number of steps for the walkers
     const N_PARAMETERS: usize = 2; // number of parameters in the fit: mean & standard deviation
@@ -50,9 +50,11 @@ fn main() {
         [0.101, 0.31],
     ];
 
-    ess.initialise(&start); // compute log-likelihood of initial positions
+    ess.initialise(&start)?; // compute log-likelihood of initial positions
     let move_handler = MoveHandler::default(); // use default move setup 90% differential + 10% gaussian 
-    ess.run_sampler(100, move_handler); // run sampler
+    ess.run_sampler(100, move_handler)?; // run sampler
 
-    ess.display_parameter_summaries()
+    ess.display_parameter_summaries();
+
+    Ok(())
 }

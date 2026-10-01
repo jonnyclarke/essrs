@@ -3,6 +3,13 @@
 pub mod static_buffer;
 
 use ndarray::{Array1, Array2};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum ChainError {
+    #[error("invalid access to empty chain buffer")]
+    EmptyChainBufferError,
+}
 
 /// Trait containing all required methods of the chain storage struct.
 pub trait ChainBuffer {

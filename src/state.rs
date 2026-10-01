@@ -62,24 +62,9 @@ impl WalkerState {
     }
 }
 
-impl WalkerState {
-    pub fn panic_on_invalid_ll(&self) {
-        if self.ll.iter().any(|x| x.is_nan()) {
-            panic!("NaN detected in Log-Likelihood!");
-        }
-
-        if self.ll.iter().any(|x| x.is_infinite()) {
-            panic!("Infinite detected in Log-Likelihood!");
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use core::f64;
-
     use ndarray::array;
-    use rstest::rstest;
 
     use super::*;
 
@@ -173,30 +158,5 @@ mod tests {
         assert_eq!(state.get_ith_ll(0), 0.2);
         assert_eq!(state.get_ith_ll(1), -2.2);
         assert_eq!(state.get_ith_ll(2), 0.4);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_panic_on_invalid_ll_nan() {
-        let state = WalkerState {
-            state: array![[1.0], [2.0]],
-            ll: array![f64::NAN, 0.0],
-            n: 2,
-        };
-        state.panic_on_invalid_ll();
-    }
-
-    #[rstest]
-    #[should_panic]
-    #[case(f64::NEG_INFINITY)]
-    #[should_panic]
-    #[case(f64::INFINITY)]
-    fn test_panic_on_invalid_ll_inf(#[case] ll: f64) {
-        let state = WalkerState {
-            state: array![[1.0], [2.0]],
-            ll: array![ll, 0.0],
-            n: 2,
-        };
-        state.panic_on_invalid_ll();
     }
 }

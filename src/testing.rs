@@ -1,3 +1,44 @@
+use anyhow;
+use ndarray::{Array1, Array2};
+
+use crate::{log_likelihood::LogLikelihoodModel, state::WalkerState};
+
+pub struct WalkerStateBuilder {
+    state: WalkerState,
+}
+
+impl WalkerStateBuilder {
+    pub fn new() -> Self {
+        Self {
+            state: WalkerState::new(3, 1),
+        }
+    }
+
+    pub fn set_state_matrix(mut self, x: &Array2<f64>) -> Self {
+        self.state.get_mut_state_matrix().assign(x);
+
+        self
+    }
+
+    pub fn set_ll_array(mut self, ll: &Array1<f64>) -> Self {
+        self.state.get_mut_ll_vector().assign(ll);
+
+        self
+    }
+
+    pub fn construct(self) -> WalkerState {
+        self.state
+    }
+}
+
+pub struct TestNegativeAbsLogL {}
+
+impl LogLikelihoodModel for TestNegativeAbsLogL {
+    fn log_likelihood(&self, parameters: &ndarray::prelude::Array1<f64>) -> anyhow::Result<f64> {
+        Ok(-parameters[0].abs())
+    }
+}
+
 #[cfg(test)]
 pub mod helpers {
 

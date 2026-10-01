@@ -54,7 +54,11 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
             .assign(&self.state_j.get_mut_ll_vector());
     }
 
-    pub fn run_sampler(&mut self, n_burn_in: usize, move_handler: MoveHandler) {
+    pub fn run_sampler(
+        &mut self,
+        n_burn_in: usize,
+        move_handler: MoveHandler,
+    ) -> anyhow::Result<()> {
         let start_time = Instant::now();
 
         // we allow burn in to eliminate effect on chains of the starting point
@@ -64,7 +68,7 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
                 &self.model,
                 &self.state_i,
                 &mut self.state_j,
-            );
+            )?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
         }
 
@@ -75,14 +79,14 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
                 &self.model,
                 &self.state_i,
                 &mut self.state_j,
-            );
+            )?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
 
             let sampler_state = &self.state_i.get_state_matrix().to_owned();
             self.chains.record_state(
                 &self
                     .model
-                    .columnar_transform_internal_to_physical(sampler_state),
+                    .columnar_transform_internal_to_physical(sampler_state)?,
             );
 
             let duration = start_time.elapsed();
@@ -96,9 +100,11 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
                 projected.as_secs()
             );
             if i % 10 == 0 {
-                self.print_quantile_summary();
+                self.print_quantile_summary()?;
             }
         }
+
+        Ok(())
     }
 
     pub fn display_parameter_summaries(&self) {
@@ -109,10 +115,14 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
         self.state_i.dump_final_log_likelihood(path)
     }
 
-    pub fn print_quantile_summary(&self) {
+    // this function should be removed from implementation and offered as extension
+    pub fn print_quantile_summary(&self) -> anyhow::Result<()> {
         // Make a sorted copy
         let mut values = self.state_i.get_ll_vector().to_vec();
-        values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        values.sort_by(|a, b| {
+            a.partial_cmp(b)
+                .expect("sorting of log-likelihood vector has failed")
+        });
 
         let n = values.len();
 
@@ -137,5 +147,6 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
                 println!("-- MAX: {}\n", v)
             }
         }
+        Ok(())
     }
 }

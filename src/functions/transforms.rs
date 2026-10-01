@@ -1,100 +1,83 @@
 //! Helper functions to transform parameters from unconstrained spaces to constrained space
 //! and apply the relevant Jacobian correction to the log-likelihood to account for the transform.
 
+mod softplus;
+
 use ndarray::{Array1, ArrayView1};
+pub use softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace};
+use thiserror::Error;
 
-use crate::functions::numerical::{log_diff_exp, log_sum_exp};
+use crate::functions::numerical::NumericalError;
 
-pub fn apply_transform_array1<F>(f: F, xs: ArrayView1<f64>, ll: &mut f64) -> Array1<f64>
+#[derive(Debug, Error)]
+pub enum TransformError {
+    #[error("invalid value passed to softplus_inverse: {value} <= 0")]
+    InvalidSoftplusInput { value: f64 },
+
+    #[error("'{computation}' computation failed: {source}")]
+    Transform {
+        computation: &'static str,
+
+        #[source]
+        source: NumericalError,
+    },
+}
+
+#[derive(Debug, Error)]
+pub enum TransformHelperError {
+    #[error("failure applying '{computation}' transform: {source}")]
+    Transform {
+        computation: &'static str,
+
+        #[source]
+        source: TransformError,
+    },
+}
+
+pub fn apply_transform_array1<F>(
+    f: F,
+    xs: ArrayView1<f64>,
+    ll: &mut f64,
+) -> Result<Array1<f64>, TransformHelperError>
 where
-    F: Fn(f64, &mut f64) -> f64,
+    F: Fn(f64, &mut f64) -> Result<f64, TransformError>,
 {
     let mut out = Array1::<f64>::zeros(xs.len());
 
     for (o, &x) in out.iter_mut().zip(xs.iter()) {
-        *o = f(x, ll);
+        *o = f(x, ll).map_err(|source| TransformHelperError::Transform {
+            computation: "array1",
+            source,
+        })?;
     }
 
-    out
+    Ok(out)
 }
 
 use ndarray::Array2;
 
-pub fn apply_transform_column<F>(f: F, array: &mut Array2<f64>, col: usize)
+pub fn apply_transform_column<F>(
+    f: F,
+    array: &mut Array2<f64>,
+    col: usize,
+) -> Result<(), TransformHelperError>
 where
-    F: Fn(f64) -> f64,
+    F: Fn(f64) -> Result<f64, TransformError>,
 {
     for x in array.column_mut(col).iter_mut() {
-        *x = f(*x);
+        *x = f(*x).map_err(|source| TransformHelperError::Transform {
+            computation: "column",
+            source,
+        })?;
     }
+
+    Ok(())
 }
 
 // Function to apply the exponential change of variable
 pub fn lj_exp(x: f64, ll: &mut f64) -> f64 {
     *ll += x;
     x.exp()
-}
-
-#[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
-/// Apply the `softplus` transformation which converts any value -inf < x < +inf to 0 < y.
-///
-/// Useful for any parameter that cannot be <0 e.g. the standard deviation of a normal distribution.
-///
-/// The transformation is given by,
-/// $$
-/// y = \ln\left(1 + e^x \right)
-/// $$
-/// with the jacobian determinant given by
-/// $$
-/// \frac{dy}{dx} = \frac{e^x}{1 + e^x}
-/// $$
-/// which simplifies, when logarithm is taken, to
-/// $$
-/// \ln\left( \frac{dy}{dx} \right) = \ln\left( \frac{e^x}{1 + e^x} \right) = x - \ln\left( 1 + e^x \right) = x - y
-/// $$
-///
-/// # Arguments
-/// * `x` - the unconstrained parameter to be transformed.
-/// * `&mut ll` - a reference to the mutable log-likelihood which will be updated as necessary
-///
-/// # Returns
-/// * `y` - the parameter in the constrained space `0 <`
-pub fn lj_softplus(x: f64, ll: &mut f64) -> f64 {
-    let y = log_sum_exp(0.0, x).unwrap();
-
-    *ll += x - y;
-
-    y
-}
-
-pub fn softplus(x: f64) -> f64 {
-    log_sum_exp(0.0, x).unwrap()
-}
-
-pub fn lj_softplus_inplace(x: &mut f64, ll: &mut f64) {
-    let y = log_sum_exp(0.0, *x).unwrap();
-
-    *ll += *x - y;
-    *x = y;
-}
-
-/// Apply the inverse of the softplus.
-/// [Can be useful for passing initial values in constrained space]
-///
-/// $$
-/// x = \ln\left(e^y - 1\right)
-/// $$
-///
-/// # Arguments:
-/// * `y` - the constrained parameter to be transformed to unconstrained space
-///
-/// # Returns
-/// * `x` - the corresponding value in unconstrained space
-pub fn inv_softplus(y: f64) -> f64 {
-    if y <= 0.0 {
-        panic!("Invalid value passed to inv softplus: {}", y)
-    }
-    log_diff_exp(y, 0.0).unwrap()
 }
 
 /// Function to apply logistic transform.
@@ -132,6 +115,7 @@ pub fn lj_tanh(x: f64, ll: &mut f64) -> f64 {
 #[cfg(test)]
 mod tests {
 
+    use anyhow;
     use approx::assert_relative_eq;
     use ndarray::array;
     use rstest::rstest;
@@ -157,30 +141,6 @@ mod tests {
 
         assert_eq!(y, target_y);
         assert_eq!(ll, x);
-    }
-
-    #[rstest]
-    #[case(
-        0.0,
-        (1.0_f64 + (0.0_f64).exp()).ln(),
-        0.0 - (1.0_f64 + (0.0_f64).exp()).ln()
-    )]
-    #[case(
-        2.0,
-        (1.0_f64 + (2.0_f64).exp()).ln(),
-        2.0 - (1.0_f64 + (2.0_f64).exp()).ln()
-    )]
-    #[case(
-        -4.567,
-        (1.0_f64 + (-4.567_f64).exp()).ln(),
-        -4.567 - (1.0_f64 + (-4.567_f64).exp()).ln()
-    )]
-    fn test_lj_softplus(#[case] x: f64, #[case] target_y: f64, #[case] target_ll: f64) {
-        let mut ll: f64 = 0.0;
-        let y = lj_softplus(x, &mut ll);
-
-        assert_eq!(y, target_y);
-        assert_eq!(ll, target_ll);
     }
 
     #[rstest]
@@ -212,61 +172,56 @@ mod tests {
         assert_relative_eq!(ll, target_ll, epsilon = 1e-8);
     }
 
-    /// Test inverse softplus
-    #[rstest]
-    #[case(1.0)]
-    #[case(2.0)]
-    #[case(3.0)]
-    #[case(1.2345678)]
-    fn test_inv_softplus_consistency(#[case] x: f64) {
-        let mut ll = 0.0;
-        assert_relative_eq!(x, inv_softplus(lj_softplus(x, &mut ll)), epsilon = 1e-8);
-    }
-
     #[test]
-    fn test_identity_transform() {
+    fn test_identity_transform() -> anyhow::Result<()> {
         let xs = array![1.0, 2.0, 3.0];
         let mut ll = 0.0;
 
         let result = apply_transform_array1(
-            |x, _ll| x, // identity
+            |x, _ll| Ok(x), // identity
             xs.view(),
             &mut ll,
-        );
+        )?;
 
         assert_eq!(result, xs);
         assert_eq!(ll, 0.0);
+
+        Ok(())
     }
 
     #[test]
-    fn test_simple_scaling_transform() {
+    fn test_simple_scaling_transform() -> anyhow::Result<()> {
         let xs = array![1.0, 2.0, 3.0];
         let mut ll = 0.0;
 
-        let result = apply_transform_array1(|x, _ll| 2.0 * x, xs.view(), &mut ll);
+        let result = apply_transform_array1(|x, _ll| Ok(2.0 * x), xs.view(), &mut ll)?;
 
         let expected = array![2.0, 4.0, 6.0];
         assert_eq!(result, expected);
         assert_eq!(ll, 0.0);
+
+        Ok(())
     }
 
     #[test]
-    fn test_log_likelihood_accumulation() {
+    fn test_log_likelihood_accumulation() -> anyhow::Result<()> {
         let xs = array![1.0, 2.0, 3.0];
         let mut ll = 0.0;
 
         let result = apply_transform_array1(
             |x, ll| {
                 *ll += x;
-                x + 1.0
+                Ok(x + 1.0)
             },
             xs.view(),
             &mut ll,
-        );
+        )?;
 
         let expected = array![2.0, 3.0, 4.0];
 
         assert_eq!(result, expected);
         assert_eq!(ll, 6.0); // 1 + 2 + 3
+
+        Ok(())
     }
 }

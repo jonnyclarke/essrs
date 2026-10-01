@@ -1,5 +1,6 @@
 use std::hint::black_box;
 
+use anyhow;
 use rand::RngCore;
 
 use crate::{log_likelihood::LogLikelihoodModel, moves::EnsembleMove, state::WalkerState};
@@ -26,8 +27,8 @@ impl EnsembleMove for DummyMove {
         _model: &dyn LogLikelihoodModel,
         _state_i: &WalkerState,
         _state_j: &mut WalkerState,
-    ) {
-        black_box(())
+    ) -> anyhow::Result<()> {
+        black_box(Ok(()))
     }
 }
 

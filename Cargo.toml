@@ -9,12 +9,14 @@ name = "essrs"
 path = "src/lib.rs"
 
 [dependencies]
+anyhow = "1.0.104"
 katexit = { version = "0.1.5", package = "katexit", optional = true }
 nalgebra = "0.34.1"
 ndarray = "0.17.1"
 num-traits = "0.2.19"
 rand = "0.9.2"
 rand_distr = "0.5.1"
+thiserror = "2.0.21"
 tracing = "0.1.43"
 
 [dev-dependencies]
