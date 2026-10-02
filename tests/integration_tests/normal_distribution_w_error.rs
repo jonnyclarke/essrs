@@ -1,7 +1,7 @@
 use anyhow;
 use essrs::{
     chains::static_buffer::StaticBuffer,
-    ess::{EnsembleSliceSampler, EnsembleSliceSamplerConfig},
+    ess::EnsembleSliceSampler,
     log_likelihood::gaussian_1d_data_err::{
         GaussianLl1dDataErrors, helper_generate_random_gaussian_points,
     },
@@ -18,13 +18,15 @@ fn test_normal_distribution_with_errors() -> anyhow::Result<()> {
     const N_PARAMETERS: usize = 2;
     const N_WALKERS: usize = 12;
 
-    type Config = EnsembleSliceSamplerConfig<N_STEPS, N_WALKERS, N_PARAMETERS>;
-
-    let chains = StaticBuffer::<Config>::new();
+    let chains = StaticBuffer::new(N_STEPS, N_WALKERS, N_PARAMETERS);
     let model = GaussianLl1dDataErrors::new(data);
 
-    let mut ess = EnsembleSliceSampler::<StaticBuffer<Config>, GaussianLl1dDataErrors, Config>::new(
-        chains, model,
+    let mut ess = EnsembleSliceSampler::<StaticBuffer, GaussianLl1dDataErrors>::new(
+        N_STEPS,
+        N_WALKERS,
+        N_PARAMETERS,
+        chains,
+        model,
     );
 
     let start = array![
