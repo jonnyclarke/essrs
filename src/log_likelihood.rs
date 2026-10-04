@@ -11,7 +11,8 @@
 //! The first is to apply the inverse transformation to the initial conditions.
 //! The second is to apply the transformation
 
-pub mod gaussian_1d_data_err;
+pub mod normal_1d;
+pub mod normal_2d;
 
 use anyhow;
 use ndarray::{Array1, Array2, ArrayView1};

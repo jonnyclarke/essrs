@@ -51,6 +51,7 @@ pub fn softplus_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> Result<(), Tr
     Ok(())
 }
 
+#[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
 /// Apply the inverse of the softplus.
 /// [Can be useful for passing initial values in constrained space]
 ///

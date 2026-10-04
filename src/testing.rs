@@ -69,7 +69,7 @@ pub mod helpers {
 
     use crate::{
         chains::static_buffer::StaticBuffer, ess::EnsembleSliceSampler,
-        log_likelihood::gaussian_1d_data_err::GaussianLl1dDataErrors,
+        log_likelihood::normal_1d::GaussianLl1dDataErrors,
     };
 
     // const MAX_N_STEPS: usize = 2;

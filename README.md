@@ -99,9 +99,8 @@ cargo run --example gaussian_1d_fit --release
 
 The following is a non-exhaustive list of future enhancements I would like to make to the repository.
 - Publishing on crates.io for better accesibility.
-- Python bindings for pre-defined log-likelihood functions for easy use.
-- Extended library of python bindings including: two-dimensional normal distribution fit with errors, GMM of two-dimensional normal distribution with errors.
 - Implementation of auto-correlation computation with auto-stop capabilities.
+- Benchmarking tests against other python MCMC implementations with a similar target distribution.
 
 ## License
 

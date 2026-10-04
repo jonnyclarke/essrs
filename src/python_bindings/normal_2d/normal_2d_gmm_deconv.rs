@@ -1,19 +1,20 @@
 use numpy::{PyArray3, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use crate::chains::ChainBuffer;
+use crate::{chains::ChainBuffer, log_likelihood::normal_2d::N_PARAMETERS_NORMAL_1D};
 use crate::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
-    log_likelihood::gaussian_1d_data_err::{
-        GaussianLl1dDataErrors, // Likelihood model for 1d Gaussian data with errors
+    log_likelihood::normal_2d::{
+        GaussianMixModel2DimUnDeConv, // Likelihood model for 2d Gaussian MixModel data with errors
     },
     moves::MoveHandler, // struct defining which moves to use
 };
 
 #[pyfunction]
-fn uncertainty_deconvolution<'py>(
+pub fn normal_2d_gmm_deconv<'py>(
     py: Python<'py>,
+    n_components: usize,
     max_n_steps: usize,
     n_burn_in: usize,
     initial_conditions: PyReadonlyArray2<'py, f64>,
@@ -23,11 +24,15 @@ fn uncertainty_deconvolution<'py>(
     let n_walkers = initial_conditions.nrows();
     let n_parameters: usize = initial_conditions.ncols();
 
+    assert!(
+        N_PARAMETERS_NORMAL_1D * n_components == initial_conditions.ncols(),
+        "initial conditions sized wrong..."
+    );
     let d = data.as_array().to_owned();
-    let model = GaussianLl1dDataErrors::new(d);
+    let model = GaussianMixModel2DimUnDeConv::new(d, n_components);
 
     let chains = StaticBuffer::new(max_n_steps, n_walkers, n_parameters);
-    let mut ess = EnsembleSliceSampler::<StaticBuffer, GaussianLl1dDataErrors>::new(
+    let mut ess = EnsembleSliceSampler::<StaticBuffer, GaussianMixModel2DimUnDeConv>::new(
         max_n_steps,
         n_walkers,
         n_parameters,
@@ -42,10 +47,4 @@ fn uncertainty_deconvolution<'py>(
     let result = ess.chains.extract_state();
 
     Ok(PyArray3::from_owned_array(py, result))
-}
-
-#[pymodule]
-fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(uncertainty_deconvolution, m)?)?;
-    Ok(())
 }

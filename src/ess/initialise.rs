@@ -46,7 +46,9 @@ mod tests {
     use approx::assert_relative_eq;
     use ndarray::array;
 
-    use crate::{functions::transforms::softplus_inverse, testing::helpers::build_test_ess};
+    use crate::{
+        functions::transforms::softplus::softplus_inverse, testing::helpers::build_test_ess,
+    };
 
     #[test]
     fn test_initialise() -> anyhow::Result<()> {

@@ -10,7 +10,8 @@ use crate::{
     functions::{
         likelihood::log_normalised_gaussian_s2,
         transforms::{
-            apply_transform_column, softplus, softplus_inverse, softplus_log_jacobian_inplace,
+            apply_transform_column,
+            softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
         },
     },
     log_likelihood::LogLikelihoodModel,
@@ -129,7 +130,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        functions::transforms::softplus_inverse, log_likelihood::WrappedLogLikelihoodModel,
+        functions::transforms::softplus::softplus_inverse,
+        log_likelihood::WrappedLogLikelihoodModel,
     };
 
     #[test]
