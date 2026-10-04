@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{
     chains::ChainBuffer,
-    ess::{EnsembleSliceSampler, EnsembleSliceSamplerConfigTrait},
+    ess::EnsembleSliceSampler,
     log_likelihood::{LogLikelihoodError, LogLikelihoodModel, WrappedLogLikelihoodModel},
 };
 
@@ -15,9 +15,7 @@ pub enum InitialisationError {
     InvalidLogLikelihood(#[from] LogLikelihoodError),
 }
 
-impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSamplerConfigTrait>
-    EnsembleSliceSampler<CHAINS, MODEL, CONFIG>
-{
+impl<C: ChainBuffer, L: LogLikelihoodModel> EnsembleSliceSampler<C, L> {
     pub fn initialise(&mut self, initial: &Array2<f64>) -> Result<(), InitialisationError> {
         self.state_i.get_mut_state_matrix().assign(
             &self
@@ -26,7 +24,7 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
         );
 
         let start_time = Instant::now();
-        for i in 0..CONFIG::N_WALKERS {
+        for i in 0..self.n_walkers {
             *self.state_i.get_mut_ith_ll(i) = self
                 .model
                 .wrapped_log_likelihood(self.state_i.get_ith_state_vector(i))?
@@ -35,7 +33,7 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
 
         println!(
             "INITIALISATION COMPLETE -- {} micro-s per walker",
-            duration.as_micros() / CONFIG::N_WALKERS as u128
+            duration.as_micros() / self.n_walkers as u128
         );
 
         Ok(())

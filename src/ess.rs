@@ -1,8 +1,7 @@
-mod config;
 mod initialise;
 mod new;
 
-use std::{marker::PhantomData, path::Path, time::Instant};
+use std::{path::Path, time::Instant};
 
 use rand::{self};
 use tracing::info;
@@ -11,37 +10,21 @@ use crate::{
     chains::ChainBuffer, log_likelihood::LogLikelihoodModel, moves::MoveHandler, state::WalkerState,
 };
 
-pub trait EnsembleSliceSamplerConfigTrait {
-    const MAX_N_STEPS: usize;
-    const N_WALKERS: usize;
-    const N_PARAMETERS: usize;
-}
+pub struct EnsembleSliceSampler<C: ChainBuffer, L: LogLikelihoodModel> {
+    max_n_steps: usize,
+    n_walkers: usize,
+    n_parameters: usize,
 
-pub struct EnsembleSliceSamplerConfig<
-    const MAX_N_STEPS: usize,
-    const N_WALKERS: usize,
-    const N_PARAMETERS: usize,
-> {}
-
-pub struct EnsembleSliceSampler<
-    CHAINS: ChainBuffer,
-    MODEL: LogLikelihoodModel,
-    CONFIG: EnsembleSliceSamplerConfigTrait,
-> {
-    pub chains: CHAINS,
-    pub model: MODEL,
+    pub chains: C,
+    pub model: L,
 
     state_i: WalkerState,
     state_j: WalkerState,
 
     rng: rand::rngs::ThreadRng,
-
-    _config: PhantomData<CONFIG>,
 }
 
-impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSamplerConfigTrait>
-    EnsembleSliceSampler<CHAINS, MODEL, CONFIG>
-{
+impl<C: ChainBuffer, L: LogLikelihoodModel> EnsembleSliceSampler<C, L> {
     pub fn accept_proposed_state(&mut self) {
         // let mut state0 = self.state_i.get_mut_state_matrix();
         self.state_i
@@ -72,7 +55,7 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
         }
 
-        for i in 1..=CONFIG::MAX_N_STEPS {
+        for i in 1..=self.max_n_steps {
             info!(iteration = i);
             move_handler.distribute_jump(
                 &mut self.rng,
@@ -91,11 +74,11 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
 
             let duration = start_time.elapsed();
 
-            let projected = duration / (i as u32) * (CONFIG::MAX_N_STEPS as u32);
+            let projected = duration / (i as u32) * (self.max_n_steps as u32);
 
             println!(
                 "Iteration {i} / {} :: TIME ELAPSED -- {} SEC [{} TOTAL]",
-                CONFIG::MAX_N_STEPS,
+                self.max_n_steps,
                 duration.as_secs(),
                 projected.as_secs()
             );
@@ -108,7 +91,8 @@ impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSample
     }
 
     pub fn display_parameter_summaries(&self) {
-        self.chains.display_parameter_summaries();
+        self.chains
+            .display_parameter_summaries(self.n_parameters as i32);
     }
 
     pub fn save_log_likelihood<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {

@@ -1,11 +1,8 @@
 use ndarray::{ArrayView2, Axis};
 
-use crate::{
-    chains::{ChainError, static_buffer::StaticBuffer},
-    ess::EnsembleSliceSamplerConfigTrait,
-};
+use crate::chains::{ChainError, static_buffer::StaticBuffer};
 
-impl<CONFIG: EnsembleSliceSamplerConfigTrait> StaticBuffer<CONFIG> {
+impl StaticBuffer {
     pub fn get_final_state(&self) -> Result<ArrayView2<'_, f64>, ChainError> {
         if self.n_stored == 0 {
             return Err(ChainError::EmptyChainBufferError);
@@ -18,7 +15,7 @@ impl<CONFIG: EnsembleSliceSamplerConfigTrait> StaticBuffer<CONFIG> {
 mod tests {
     use ndarray::array;
 
-    use crate::testing::helpers::make_test_static_buffer;
+    use crate::testing::make_test_static_buffer;
 
     #[test]
     fn test_get_final_state() -> anyhow::Result<()> {

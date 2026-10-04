@@ -1,31 +1,31 @@
-use std::marker::PhantomData;
-
 use crate::{
-    chains::ChainBuffer,
-    ess::{EnsembleSliceSampler, EnsembleSliceSamplerConfigTrait},
-    log_likelihood::LogLikelihoodModel,
+    chains::ChainBuffer, ess::EnsembleSliceSampler, log_likelihood::LogLikelihoodModel,
     state::WalkerState,
 };
 
-impl<CHAINS: ChainBuffer, MODEL: LogLikelihoodModel, CONFIG: EnsembleSliceSamplerConfigTrait>
-    EnsembleSliceSampler<CHAINS, MODEL, CONFIG>
-{
-    pub fn new(chains: CHAINS, model: MODEL) -> Self {
-        let nw = CONFIG::N_WALKERS;
-        let np = CONFIG::N_PARAMETERS;
-        let required_walkers = (np * 2).max(3);
-        assert!(nw >= required_walkers);
+impl<C: ChainBuffer, L: LogLikelihoodModel> EnsembleSliceSampler<C, L> {
+    pub fn new(
+        max_n_steps: usize,
+        n_walkers: usize,
+        n_parameters: usize,
+        chains: C,
+        model: L,
+    ) -> Self {
+        let required_walkers = (n_parameters * 2).max(3);
+        assert!(n_walkers >= required_walkers);
 
         Self {
+            max_n_steps,
+            n_walkers,
+            n_parameters,
+
             chains,
             model,
 
-            state_i: WalkerState::new(CONFIG::N_WALKERS, CONFIG::N_PARAMETERS),
-            state_j: WalkerState::new(CONFIG::N_WALKERS, CONFIG::N_PARAMETERS),
+            state_i: WalkerState::new(n_walkers, n_parameters),
+            state_j: WalkerState::new(n_walkers, n_parameters),
 
             rng: rand::rng(),
-
-            _config: PhantomData,
         }
     }
 }

@@ -1,6 +1,6 @@
 use essrs::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
-    ess::{EnsembleSliceSampler, EnsembleSliceSamplerConfig}, // ensemble slice sampler struct
+    ess::EnsembleSliceSampler,           // ensemble slice sampler struct
     log_likelihood::gaussian_1d_data_err::{
         GaussianLl1dDataErrors, // Likelihood model for 1d Gaussian data with errors
         helper_generate_random_gaussian_points, // helper function to generate random gaussian points
@@ -26,13 +26,14 @@ fn main() -> anyhow::Result<()> {
     const N_PARAMETERS: usize = 2; // number of parameters in the fit: mean & standard deviation
     const N_WALKERS: usize = 12; // number of walkers used simultaneously NOTE: > 2 x N_PARAMETERS
 
-    // Build config object which ensures all components are consistent
-    type Config = EnsembleSliceSamplerConfig<N_STEPS, N_WALKERS, N_PARAMETERS>;
-
-    let chains = StaticBuffer::<Config>::new();
+    let chains = StaticBuffer::new(N_STEPS, N_WALKERS, N_PARAMETERS);
     let model = GaussianLl1dDataErrors::new(data);
-    let mut ess = EnsembleSliceSampler::<StaticBuffer<Config>, GaussianLl1dDataErrors, Config>::new(
-        chains, model,
+    let mut ess = EnsembleSliceSampler::<StaticBuffer, GaussianLl1dDataErrors>::new(
+        N_STEPS,
+        N_WALKERS,
+        N_PARAMETERS,
+        chains,
+        model,
     );
 
     let start = array![

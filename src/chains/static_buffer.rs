@@ -1,54 +1,25 @@
 mod final_state;
 mod store_final_positions;
 
-use std::marker::PhantomData;
-
 use ndarray::{Array1, Array2, Array3, Axis, s};
 
-use crate::{chains::ChainBuffer, ess::EnsembleSliceSamplerConfigTrait};
+use crate::chains::ChainBuffer;
 
-pub struct StaticBuffer<CONFIG: EnsembleSliceSamplerConfigTrait> {
+pub struct StaticBuffer {
     chains: Array3<f64>,
     n_stored: usize,
-    _config: PhantomData<CONFIG>,
 }
 
-impl<CONFIG: EnsembleSliceSamplerConfigTrait> StaticBuffer<CONFIG> {
-    pub fn new() -> Self {
+impl StaticBuffer {
+    pub fn new(max_n_steps: usize, n_walkers: usize, n_parameters: usize) -> Self {
         Self {
-            chains: Array3::<f64>::zeros((
-                CONFIG::MAX_N_STEPS,
-                CONFIG::N_WALKERS,
-                CONFIG::N_PARAMETERS,
-            )),
+            chains: Array3::<f64>::zeros((max_n_steps, n_walkers, n_parameters)),
             n_stored: 0,
-            _config: PhantomData,
-        }
-    }
-
-    // normal API uses private constructor/fields
-    #[cfg(test)]
-    pub fn test_new(chains: Array3<f64>, n_stored: usize) -> Self {
-        assert_eq!(
-            chains.shape(),
-            &[CONFIG::MAX_N_STEPS, CONFIG::N_WALKERS, CONFIG::N_PARAMETERS]
-        );
-        assert_eq!(n_stored, CONFIG::MAX_N_STEPS);
-        Self {
-            chains,
-            n_stored,
-            _config: std::marker::PhantomData,
         }
     }
 }
 
-impl<CONFIG: EnsembleSliceSamplerConfigTrait> Default for StaticBuffer<CONFIG> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<CONFIG: EnsembleSliceSamplerConfigTrait> ChainBuffer for StaticBuffer<CONFIG> {
+impl ChainBuffer for StaticBuffer {
     fn record_state(&mut self, state: &Array2<f64>) {
         let mut slice = self.chains.index_axis_mut(Axis(0), self.n_stored);
         slice.assign(state);
@@ -63,9 +34,7 @@ impl<CONFIG: EnsembleSliceSamplerConfigTrait> ChainBuffer for StaticBuffer<CONFI
         self.chains.slice(s![.., i_walker, i_parameter]).to_owned()
     }
 
-    fn display_parameter_summaries(&self) {
-        let n_params = CONFIG::N_PARAMETERS;
-
+    fn display_parameter_summaries(&self, n_params: i32) {
         println!(
             "{:<12} {:>12} {:>12} {:>12} {:>12}",
             "Parameter", "Mean", "StdDev", "Min", "Max"
@@ -109,14 +78,13 @@ mod tests {
     use ndarray::{Array2, array};
 
     use super::*;
-    use crate::ess::EnsembleSliceSamplerConfig;
 
     // ---- Mock Config ----
-    type TestConfig = EnsembleSliceSamplerConfig<10, 2, 2>;
+    // type TestConfig = EnsembleSliceSamplerConfig<10, 2, 2>;
 
     #[test]
     fn test_record_and_extract_history() {
-        let mut buffer = StaticBuffer::<TestConfig>::default();
+        let mut buffer = StaticBuffer::new(10, 2, 2);
 
         // Step 0
         let state0: Array2<f64> = array![[1.0, 2.0], [3.0, 4.0],];
@@ -141,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_initial_state_is_zero() {
-        let buffer = StaticBuffer::<TestConfig>::new();
+        let buffer = StaticBuffer::new(10, 2, 2);
 
         let history = buffer.extract_parameter_history(0, 0);
 

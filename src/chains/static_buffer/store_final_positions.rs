@@ -2,9 +2,9 @@ use std::{fs::File, io::BufWriter, path::Path};
 
 use ndarray::Axis;
 
-use crate::{chains::static_buffer::StaticBuffer, ess::EnsembleSliceSamplerConfigTrait};
+use crate::chains::static_buffer::StaticBuffer;
 
-impl<CONFIG: EnsembleSliceSamplerConfigTrait> StaticBuffer<CONFIG> {
+impl StaticBuffer {
     pub fn write_final_walkers<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         if self.n_stored == 0 {
             return Ok(());
@@ -38,7 +38,7 @@ mod tests {
 
     use tempfile::NamedTempFile;
 
-    use crate::testing::helpers::make_test_static_buffer;
+    use crate::testing::make_test_static_buffer;
 
     #[test]
     fn test_write_final_walkers_to_buffer() -> anyhow::Result<()> {
