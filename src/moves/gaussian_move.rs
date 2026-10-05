@@ -1,9 +1,14 @@
+//! Implementation of Gaussian Move
+//! The algorithm is as follows:
+//! - the covariance of the walker distribution is computed
+//! - this is decomposed via cholesky
+//! - the direction vector is then randomly sampled from the cholesky decomposition
+//!
+//! This move algorithm permits all directions in parameter space whilst also respecting the geometry of the posterior given by the current walker distribution.
+
 use anyhow;
 use nalgebra::{Cholesky, DMatrix, DVector};
-use ndarray::Array1;
-// This struct takes the current state and computes the covariance matrix
-// It then samples the covariance matrix around a random point and if the point is an improvement
-// then it accepts the jump.
+use ndarray::{Array1, Array2};
 use rand::RngCore;
 use rand_distr::{Distribution, StandardNormal};
 use thiserror::Error;
@@ -22,6 +27,38 @@ pub enum GaussianMoveError {
 
     #[error("failure converting covariance matrix into a Cholesky object")]
     CovarianceToCholeskyError,
+}
+
+fn state_to_covariance(state_matrix: Array2<f64>) -> anyhow::Result<DMatrix<f64>> {
+    let mat = DMatrix::from_row_slice(
+        state_matrix.nrows(),
+        state_matrix.ncols(),
+        state_matrix
+            .as_slice()
+            .ok_or(GaussianMoveError::StateMatrixToSliceError)?,
+    );
+
+    let mean = DVector::from_iterator(mat.ncols(), (0..mat.ncols()).map(|j| mat.column(j).mean()));
+
+    let dim = mat.ncols();
+    let n = mat.nrows() as f64;
+    let mut cov = DMatrix::zeros(dim, dim);
+
+    for i in 0..dim {
+        for j in 0..dim {
+            let cov_ij = mat
+                .column(i)
+                .iter()
+                .zip(mat.column(j).iter())
+                .map(|(x, y)| (x - mean[i]) * (y - mean[j]))
+                .sum::<f64>()
+                / (n - 1.0);
+
+            cov[(i, j)] = cov_ij;
+        }
+    }
+
+    Ok(cov)
 }
 
 pub struct GaussianMove {}
@@ -48,37 +85,9 @@ impl EnsembleMove for GaussianMove {
     ) -> anyhow::Result<()> {
         let state_matrix = state_i.get_state_matrix().to_owned();
 
-        let mat = DMatrix::from_row_slice(
-            state_matrix.nrows(),
-            state_matrix.ncols(),
-            state_matrix
-                .as_slice()
-                .ok_or(GaussianMoveError::StateMatrixToSliceError)?,
-        );
+        let cov = state_to_covariance(state_matrix)?;
+        let dim = cov.ncols();
 
-        let mean =
-            DVector::from_iterator(mat.ncols(), (0..mat.ncols()).map(|j| mat.column(j).mean()));
-
-        let dim = mat.ncols();
-        let n = mat.nrows() as f64;
-        let mut cov = DMatrix::zeros(dim, dim);
-
-        for i in 0..dim {
-            for j in 0..dim {
-                let cov_ij = mat
-                    .column(i)
-                    .iter()
-                    .zip(mat.column(j).iter())
-                    .map(|(x, y)| (x - mean[i]) * (y - mean[j]))
-                    .sum::<f64>()
-                    / (n - 1.0);
-                cov[(i, j)] = cov_ij;
-
-                if i == j {
-                    cov[(i, j)] *= 1.0 + 1e-8; // to avoid numerical problems
-                }
-            }
-        }
         // Obtain Cholesky matrix
         let chol = Cholesky::new(cov).ok_or(GaussianMoveError::CovarianceToCholeskyError)?;
         let l = chol.l();
@@ -111,6 +120,30 @@ impl EnsembleMove for GaussianMove {
             state_j.get_mut_ith_state_vector(i).assign(&accepted);
             *state_j.get_mut_ith_ll(i) = ll;
         }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use approx::assert_relative_eq;
+    use nalgebra::dmatrix;
+    use ndarray::array;
+
+    use super::*;
+
+    // unit tests derived from running data through python numpy routine
+    #[test]
+    fn test_state_to_covariance() -> anyhow::Result<()> {
+        let state = array![[1.0, 1.2], [2.3, 1.8], [1.8, 2.2], [0.9, 3.2]];
+
+        let cov = state_to_covariance(state)?;
+        let true_cov: DMatrix<f64> = dmatrix![
+            0.44666667, -0.14;
+            -0.14, 0.70666667;
+        ];
+        assert_relative_eq!(cov, true_cov, epsilon = 1e-8);
 
         Ok(())
     }
