@@ -2,9 +2,7 @@ use anyhow;
 use essrs::{
     chains::static_buffer::StaticBuffer,
     ess::EnsembleSliceSampler,
-    log_likelihood::gaussian_1d_data_err::{
-        GaussianLl1dDataErrors, helper_generate_random_gaussian_points,
-    },
+    log_likelihood::normal_1d::{GaussianLl1dDataErrors, helper_generate_random_gaussian_points},
     moves::MoveHandler,
 };
 use ndarray::array;

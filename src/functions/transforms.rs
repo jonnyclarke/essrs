@@ -1,10 +1,11 @@
 //! Helper functions to transform parameters from unconstrained spaces to constrained space
 //! and apply the relevant Jacobian correction to the log-likelihood to account for the transform.
 
-mod softplus;
+pub mod ordseq;
+pub mod softplus;
+pub mod tanh;
 
-use ndarray::{Array1, ArrayView1};
-pub use softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace};
+use ndarray::{Array1, ArrayView1, s};
 use thiserror::Error;
 
 use crate::functions::numerical::NumericalError;
@@ -13,6 +14,9 @@ use crate::functions::numerical::NumericalError;
 pub enum TransformError {
     #[error("invalid value passed to softplus_inverse: {value} <= 0")]
     InvalidSoftplusInput { value: f64 },
+
+    #[error("invalid value passed to tanh_inverse: -1 !<= {value} !<= 1")]
+    InvalidAtanhInput { value: f64 },
 
     #[error("'{computation}' computation failed: {source}")]
     Transform {
@@ -74,6 +78,29 @@ where
     Ok(())
 }
 
+/// Function to apply an inplace column transform reliant on two columns.
+/// An example of usage is to provide ordered softplus transforms.
+pub fn apply_inplace_multi_column_transform<F>(
+    f: F,
+    array: &mut Array2<f64>,
+    col1: usize,
+    col2: usize,
+) -> Result<(), TransformHelperError>
+where
+    F: Fn(f64, &mut f64) -> Result<(), TransformError>,
+{
+    let (column1, mut column2) = array.multi_slice_mut((s![.., col1], s![.., col2]));
+
+    for (x1, x2) in column1.iter().zip(column2.iter_mut()) {
+        f(*x1, x2).map_err(|source| TransformHelperError::Transform {
+            computation: "columns",
+            source,
+        })?;
+    }
+
+    Ok(())
+}
+
 // Function to apply the exponential change of variable
 pub fn lj_exp(x: f64, ll: &mut f64) -> f64 {
     *ll += x;
@@ -99,24 +126,10 @@ pub fn lj_logistic(x: f64, ll: &mut f64) -> f64 {
     y
 }
 
-/// Map an unconstrained variable to -1 < y < 1
-///
-/// $$
-/// y = \tanh\left( x \right) = \frac{\sinh\left(x\right)}{\cosh\left( x \right)}
-/// $$
-pub fn lj_tanh(x: f64, ll: &mut f64) -> f64 {
-    let y = x.tanh();
-
-    *ll += (1.0 - y.powi(2)).ln();
-
-    y
-}
-
 #[cfg(test)]
 mod tests {
 
     use anyhow;
-    use approx::assert_relative_eq;
     use ndarray::array;
     use rstest::rstest;
 
@@ -156,20 +169,6 @@ mod tests {
 
         assert_eq!(y, target_y);
         assert_eq!(ll, target_ll);
-    }
-
-    #[rstest]
-    #[case(
-        1.2345,
-        (1.2345_f64).tanh(),
-        (((1.2345_f64).cosh().powi(2) - (1.2345_f64).sinh().powi(2)) / (1.2345_f64).cosh().powi(2)).ln()
-    )]
-    fn test_lj_tanh(#[case] x: f64, #[case] target_y: f64, #[case] target_ll: f64) {
-        let mut ll: f64 = 0.0;
-        let y = lj_tanh(x, &mut ll);
-
-        assert_eq!(y, target_y);
-        assert_relative_eq!(ll, target_ll, epsilon = 1e-8);
     }
 
     #[test]
@@ -221,6 +220,25 @@ mod tests {
 
         assert_eq!(result, expected);
         assert_eq!(ll, 6.0); // 1 + 2 + 3
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_apply_inplace_multi_column_transform() -> anyhow::Result<()> {
+        let mut arr = array![[1.0, 2.0], [3.0, 4.0]];
+
+        apply_inplace_multi_column_transform(
+            |x0, x| {
+                *x += x0;
+                Ok(())
+            },
+            &mut arr,
+            0,
+            1,
+        )?;
+
+        assert_eq!(arr, array![[1.0, 3.0], [3.0, 7.0]]);
 
         Ok(())
     }

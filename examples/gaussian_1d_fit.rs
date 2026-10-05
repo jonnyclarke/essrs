@@ -1,7 +1,7 @@
 use essrs::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
-    log_likelihood::gaussian_1d_data_err::{
+    log_likelihood::normal_1d::{
         GaussianLl1dDataErrors, // Likelihood model for 1d Gaussian data with errors
         helper_generate_random_gaussian_points, // helper function to generate random gaussian points
     },

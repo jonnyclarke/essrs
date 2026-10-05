@@ -78,6 +78,7 @@ mod tests {
     use ndarray::{Array2, array};
 
     use super::*;
+    use crate::testing::make_test_static_buffer;
 
     // ---- Mock Config ----
     // type TestConfig = EnsembleSliceSamplerConfig<10, 2, 2>;
@@ -117,5 +118,24 @@ mod tests {
         for value in history.iter() {
             assert_eq!(*value, 0.0);
         }
+    }
+
+    #[test]
+    fn test_extract_state() {
+        let buffer = make_test_static_buffer();
+
+        assert_eq!(
+            buffer.extract_state(),
+            array![
+                [[11.0, 12.0], [13.0, 14.0], [15.0, 16.0], [17.0, 18.0]],
+                [[21.0, 22.0], [23.0, 24.0], [25.0, 26.0], [27.0, 28.0]]
+            ]
+        )
+    }
+
+    #[test]
+    fn test_display_parameter_summaries() {
+        let buffer = make_test_static_buffer();
+        buffer.display_parameter_summaries(2);
     }
 }

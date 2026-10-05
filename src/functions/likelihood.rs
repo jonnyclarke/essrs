@@ -68,7 +68,7 @@ pub fn log_normal_2d(x: f64, y: f64, mu_x: f64, mu_y: f64, a: f64, bc: f64, d: f
 
     let det = a * d - bc.powi(2);
 
-    -0.5 * det.ln() - 0.5 * (dx * (d * dx - bc * dy) + dy * (a * dy - bc * dx)) // constant factor of pi neglected
+    -0.5 * det.ln() - 0.5 * (dx * (d * dx - bc * dy) + dy * (a * dy - bc * dx)) / det // constant factor of pi neglected
 }
 
 #[cfg(test)]
