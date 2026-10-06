@@ -9,8 +9,7 @@
 //! | We step in; we randomly sample within the range [v0 - n * d, v0 + m * d] until, at (v0', l0') the log-likelihood is greater than the acceptance threshold.
 //! | The new point v0', and corresponding likelihood, l0', are stored as next element on the MCMC walk.
 
-use ndarray::{ArrayViewMut1, Zip};
-use rand::Rng;
+use ndarray::{Array1, ArrayViewMut1, Zip};
 
 use crate::{
     log_likelihood::LogLikelihoodModel,
@@ -51,50 +50,67 @@ impl DifferentialMove {
     }
 }
 
+use rayon::prelude::*;
+
 impl EnsembleMove for DifferentialMove {
-    fn jump<L: LogLikelihoodModel, R: Rng>(
+    fn jump<L: LogLikelihoodModel + Sync>(
         &self,
-        rng: &mut R,
         log_likelihood_model: &L,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
     ) -> anyhow::Result<()> {
         let n_walkers = state_i.n_walkers();
 
-        // we generate multiple scratch arrays to avoid constantly re-allocating
-        let mut direction = state_i.get_ith_state_vector(0).to_owned();
-        let mut internal = state_i.get_ith_state_vector(0).to_owned();
-        let mut physical = state_i.get_ith_state_vector(0).to_owned();
+        let proposals: Vec<anyhow::Result<(Array1<f64>, f64)>> = (0..n_walkers)
+            .into_par_iter()
+            .map(|i| {
+                let mut rng = rand::rng();
 
-        for i in 0..n_walkers {
-            let ll_floor = state_i.get_ith_ll(i) + self.get_likelihood_floor(rng);
+                // Each worker owns its own scratch arrays.
+                let mut direction = state_i.get_ith_state_vector(i).to_owned();
 
-            let current = state_i.get_ith_state_vector(i);
+                let mut internal = state_i.get_ith_state_vector(i).to_owned();
 
-            let l = get_rn_not(rng, n_walkers, i);
-            let r = get_rn_not_or(rng, n_walkers, i, l);
-            self.get_vector(state_i, l, r, &mut direction.view_mut());
+                let mut physical = state_i.get_ith_state_vector(i).to_owned();
 
-            let search_bounds = step_out(
-                log_likelihood_model,
-                current.view(),
-                direction.view(),
-                &mut internal.view_mut(),
-                &mut physical.view_mut(),
-                ll_floor,
-            )?;
+                let ll_floor = state_i.get_ith_ll(i) + self.get_likelihood_floor(&mut rng);
 
-            let log_likelihood = step_in(
-                rng,
-                log_likelihood_model,
-                current.view(),
-                direction.view(),
-                search_bounds,
-                &mut internal.view_mut(),
-                &mut physical.view_mut(),
-            )?;
+                let current = state_i.get_ith_state_vector(i);
+
+                let l = get_rn_not(&mut rng, n_walkers, i);
+                let r = get_rn_not_or(&mut rng, n_walkers, i, l);
+
+                self.get_vector(state_i, l, r, &mut direction.view_mut());
+
+                let search_bounds = step_out(
+                    log_likelihood_model,
+                    current.view(),
+                    direction.view(),
+                    &mut internal.view_mut(),
+                    &mut physical.view_mut(),
+                    ll_floor,
+                )?;
+
+                let log_likelihood = step_in(
+                    &mut rng,
+                    log_likelihood_model,
+                    current.view(),
+                    direction.view(),
+                    search_bounds,
+                    &mut internal.view_mut(),
+                    &mut physical.view_mut(),
+                )?;
+
+                Ok((internal, log_likelihood))
+            })
+            .collect();
+
+        // Commit the results sequentially.
+        for (i, proposal) in proposals.into_iter().enumerate() {
+            let (internal, log_likelihood) = proposal?;
 
             state_j.get_mut_ith_state_vector(i).assign(&internal);
+
             *state_j.get_mut_ith_ll(i) = log_likelihood;
         }
 
