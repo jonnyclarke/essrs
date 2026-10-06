@@ -1,3 +1,6 @@
+use std::time::Instant;
+
+use essrs::moves::move_handlers::differential_handler::DifferentialHandler;
 use essrs::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
@@ -5,10 +8,32 @@ use essrs::{
         GaussianLl1dDataErrors, // Likelihood model for 1d Gaussian data with errors
         helper_generate_random_gaussian_points, // helper function to generate random gaussian points
     },
-    moves::MoveHandler, // struct defining which moves to use
 };
-use ndarray::array;
+use ndarray::Array2;
+use rand_distr::{Distribution, Normal};
 use tracing_subscriber::fmt;
+
+fn generate_cloud(anchor: &[f64], n_points: usize, std_dev: &[f64]) -> Array2<f64> {
+    assert_eq!(anchor.len(), std_dev.len());
+
+    let mut rng = rand::rng();
+    let dimensions = anchor.len();
+
+    let normals: Vec<Normal<f64>> = std_dev
+        .iter()
+        .map(|&sigma| Normal::new(0.0, sigma).unwrap())
+        .collect();
+
+    let mut points = Array2::<f64>::zeros((n_points, dimensions));
+
+    for mut point in points.outer_iter_mut() {
+        for (j, value) in point.iter_mut().enumerate() {
+            *value = anchor[j] + normals[j].sample(&mut rng);
+        }
+    }
+
+    points
+}
 
 fn main() -> anyhow::Result<()> {
     fmt()
@@ -22,39 +47,33 @@ fn main() -> anyhow::Result<()> {
     const N_DATA_POINTS: usize = 10_000;
     let data = helper_generate_random_gaussian_points(N_DATA_POINTS)?;
 
-    const N_STEPS: usize = 500; // number of steps for the walkers
+    const N_BURN_IN: usize = 500;
+    const N_STEPS: usize = 1000; // number of steps for the walkers
     const N_PARAMETERS: usize = 2; // number of parameters in the fit: mean & standard deviation
-    const N_WALKERS: usize = 12; // number of walkers used simultaneously NOTE: > 2 x N_PARAMETERS
+    const N_WALKERS: usize = 100; // number of walkers used simultaneously NOTE: > 2 x N_PARAMETERS
 
     let chains = StaticBuffer::new(N_STEPS, N_WALKERS, N_PARAMETERS);
-    let model = GaussianLl1dDataErrors::new(data);
-    let mut ess = EnsembleSliceSampler::<StaticBuffer, GaussianLl1dDataErrors>::new(
-        N_STEPS,
-        N_WALKERS,
-        N_PARAMETERS,
-        chains,
-        model,
-    );
+    let move_handler = DifferentialHandler::new();
+    let model = GaussianLl1dDataErrors::new(&data);
+    let mut ess =
+        EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, GaussianLl1dDataErrors>::new(
+            N_STEPS,
+            N_WALKERS,
+            N_PARAMETERS,
+            chains,
+            move_handler,
+            model,
+        );
 
-    let start = array![
-        [0.102, 0.87],
-        [0.103, 0.76],
-        [0.101, 0.90],
-        [0.999, 0.65],
-        [0.994, 0.81],
-        [0.108, 1.01],
-        [0.997, 0.72],
-        [0.995, 0.79],
-        [0.993, 0.67],
-        [0.102, 0.51],
-        [0.998, 1.12],
-        [0.101, 0.31],
-    ];
+    let start = generate_cloud(&[0.1, 1.0], N_WALKERS, &[0.05, 0.05]);
 
-    ess.initialise(&start)?; // compute log-likelihood of initial positions
-    let move_handler = MoveHandler::default(); // use default move setup 90% differential + 10% gaussian 
-    ess.run_sampler(100, move_handler)?; // run sampler
+    let start_time = Instant::now();
 
+    ess.initialise(start.view())?; // compute log-likelihood of initial positions
+    ess.run_sampler(N_BURN_IN)?; // run sampler
+
+    let duration = start_time.elapsed();
+    println!("sampler has taken {} seconds", duration.as_secs());
     ess.display_parameter_summaries();
 
     Ok(())

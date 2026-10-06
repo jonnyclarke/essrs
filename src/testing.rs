@@ -1,9 +1,7 @@
-use anyhow;
 use ndarray::{Array1, Array2, array};
 
 use crate::{
     chains::{ChainBuffer, static_buffer::StaticBuffer},
-    log_likelihood::LogLikelihoodModel,
     state::WalkerState,
 };
 
@@ -54,14 +52,6 @@ pub fn make_test_static_buffer() -> StaticBuffer {
     buffer
 }
 
-pub struct TestNegativeAbsLogL {}
-
-impl LogLikelihoodModel for TestNegativeAbsLogL {
-    fn log_likelihood(&self, parameters: &ndarray::prelude::Array1<f64>) -> anyhow::Result<f64> {
-        Ok(-parameters[0].abs())
-    }
-}
-
 #[cfg(test)]
 pub mod helpers {
 
@@ -70,19 +60,28 @@ pub mod helpers {
     use crate::{
         chains::static_buffer::StaticBuffer, ess::EnsembleSliceSampler,
         log_likelihood::normal_1d::GaussianLl1dDataErrors,
+        moves::move_handlers::differential_handler::DifferentialHandler,
     };
 
     // const MAX_N_STEPS: usize = 2;
 
-    pub fn build_test_ess() -> EnsembleSliceSampler<StaticBuffer, GaussianLl1dDataErrors> {
+    pub fn build_test_ess()
+    -> EnsembleSliceSampler<StaticBuffer, DifferentialHandler, GaussianLl1dDataErrors> {
         let data = array![[0.0_f64, 0.0_f64]];
 
         let chains = StaticBuffer::new(2, 4, 2);
-        let model = GaussianLl1dDataErrors::new(data);
+        let move_handler = DifferentialHandler::new();
+        let model = GaussianLl1dDataErrors::new(&data);
 
-        let ess = EnsembleSliceSampler::<StaticBuffer, GaussianLl1dDataErrors>::new(
-            2, 4, 2, chains, model,
-        );
+        let ess =
+            EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, GaussianLl1dDataErrors>::new(
+                2,
+                4,
+                2,
+                chains,
+                move_handler,
+                model,
+            );
 
         ess
     }

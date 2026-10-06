@@ -18,6 +18,7 @@ features = ["python"]
 
 [dependency-groups]
 dev = [
+    "emcee>=3.1.6",
     "ipykernel>=7.3.0",
     "ipython>=8.39.0",
     "maturin>=1.15.0",

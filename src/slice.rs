@@ -1,5 +1,5 @@
 //! This script contains the step in and step out functions used for ensemble slice sampling
-use ndarray::{Array1, ArrayView1};
+use ndarray::{ArrayView1, ArrayViewMut1, Zip};
 use rand::{Rng, RngCore};
 use thiserror::Error;
 
@@ -30,6 +30,7 @@ pub enum SliceSamplerError {
 pub struct LikelihoodBounds {
     nl: f64,
     nr: f64,
+    ll_floor: f64,
     _ll_l: f64,
     _ll_r: f64,
 }
@@ -40,39 +41,70 @@ pub fn step_out(
     model: &dyn LogLikelihoodModel,
     anchor_vec: ArrayView1<f64>,
     direction_vec: ArrayView1<f64>,
+    internal: &mut ArrayViewMut1<f64>, // specifically to avoid many array allocations
+    physical: &mut ArrayViewMut1<f64>,
     ll_floor: f64,
 ) -> Result<LikelihoodBounds, SliceSamplerError> {
     let mut nl = -1.0;
     let mut nr = 1.0;
 
     // Left
-    let mut params = &anchor_vec + &direction_vec * nl;
+    // let mut params = &anchor_vec + &direction_vec * nl;
+    Zip::from(&mut *internal)
+        .and(&anchor_vec)
+        .and(&direction_vec)
+        .for_each(|out, &anchor, &direction| {
+            *out = anchor + direction * nl;
+        });
+
     let mut ll_l = model
-        .wrapped_log_likelihood(params.view())
+        .wrapped_log_likelihood(internal.view(), physical)
         .map_err(|source| SliceSamplerError::StepOutLeftError { source })?;
+
     let mut il: usize = 1;
 
     while ll_l > ll_floor && il <= N_MAX_STEP_OUT_ITERATIONS {
         nl *= 2.0; // multiple by 2 to expand faster as the fall-in is also binary-tree reduction
-        params.assign(&(&anchor_vec + &direction_vec * nl));
+
+        Zip::from(&mut *internal)
+            .and(&anchor_vec)
+            .and(&direction_vec)
+            .for_each(|out, &anchor, &direction| {
+                *out = anchor + direction * nl;
+            });
+
         ll_l = model
-            .wrapped_log_likelihood(params.view())
+            .wrapped_log_likelihood(internal.view(), physical)
             .map_err(|source| SliceSamplerError::StepOutLeftError { source })?;
         il += 1;
     }
 
     // Right
-    params.assign(&(&anchor_vec + &direction_vec * nr));
+    Zip::from(&mut *internal)
+        .and(&anchor_vec)
+        .and(&direction_vec)
+        .for_each(|out, &anchor, &direction| {
+            *out = anchor + direction * nl;
+        });
+
     let mut ll_r = model
-        .wrapped_log_likelihood(params.view())
+        .wrapped_log_likelihood(internal.view(), physical)
         .map_err(|source| SliceSamplerError::StepOutRightError { source })?;
+
     let mut ir: usize = 1;
 
     while ll_r > ll_floor && ir <= N_MAX_STEP_OUT_ITERATIONS {
         nr *= 2.0;
-        params.assign(&(&anchor_vec + &direction_vec * nr));
+
+        Zip::from(&mut *internal)
+            .and(&anchor_vec)
+            .and(&direction_vec)
+            .for_each(|out, &anchor, &direction| {
+                *out = anchor + direction * nl;
+            });
+
         ll_r = model
-            .wrapped_log_likelihood(params.view())
+            .wrapped_log_likelihood(internal.view(), physical)
             .map_err(|source| SliceSamplerError::StepOutRightError { source })?;
         ir += 1;
     }
@@ -80,6 +112,7 @@ pub fn step_out(
     Ok(LikelihoodBounds {
         nl,
         nr,
+        ll_floor,
         _ll_l: ll_l,
         _ll_r: ll_r,
     })
@@ -91,24 +124,28 @@ pub fn step_in(
     anchor_vec: ArrayView1<f64>,
     direction_vec: ArrayView1<f64>,
     search_bounds: LikelihoodBounds,
-    ll_floor: f64,
-) -> Result<(f64, Array1<f64>), SliceSamplerError> {
+    internal: &mut ArrayViewMut1<f64>, // specifically to avoid many array allocations
+    physical: &mut ArrayViewMut1<f64>,
+) -> Result<f64, SliceSamplerError> {
     let mut nl = search_bounds.nl;
     let mut nr = search_bounds.nr;
 
     let mut shift = rng.random_range(nl..nr);
 
-    let mut params = Array1::zeros(anchor_vec.len());
-
     loop {
-        params.assign(&(&anchor_vec + &direction_vec * shift));
+        Zip::from(&mut *internal)
+            .and(&anchor_vec)
+            .and(&direction_vec)
+            .for_each(|out, &anchor, &direction| {
+                *out = anchor + direction * shift;
+            });
 
         let ll = model
-            .wrapped_log_likelihood(params.view())
+            .wrapped_log_likelihood(internal.view(), physical)
             .map_err(|source| SliceSamplerError::StepInError { source })?;
 
-        if ll >= ll_floor {
-            return Ok((ll, params));
+        if ll >= search_bounds.ll_floor {
+            return Ok(ll);
         }
 
         if shift < 0.0 {

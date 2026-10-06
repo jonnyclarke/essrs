@@ -4,7 +4,7 @@ use essrs::{
     chains::static_buffer::StaticBuffer,
     ess::EnsembleSliceSampler,
     log_likelihood::normal_1d::{GaussianLl1dDataErrors, helper_generate_random_gaussian_points},
-    moves::MoveHandler,
+    moves::move_handlers::differential_handler::DifferentialHandler,
 };
 use ndarray::{Array2, array};
 
@@ -14,15 +14,18 @@ fn fit_gaussian(data: Array2<f64>) -> anyhow::Result<()> {
     const N_WALKERS: usize = 12;
 
     let chains = StaticBuffer::new(N_STEPS, N_WALKERS, N_PARAMETERS);
-    let model = GaussianLl1dDataErrors::new(data);
+    let move_handler = DifferentialHandler::new();
+    let model = GaussianLl1dDataErrors::new(&data);
 
-    let mut ess = EnsembleSliceSampler::<StaticBuffer, GaussianLl1dDataErrors>::new(
-        N_STEPS,
-        N_WALKERS,
-        N_PARAMETERS,
-        chains,
-        model,
-    );
+    let mut ess =
+        EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, GaussianLl1dDataErrors>::new(
+            N_STEPS,
+            N_WALKERS,
+            N_PARAMETERS,
+            chains,
+            move_handler,
+            model,
+        );
 
     let start = array![
         [0.102, 0.87],
@@ -39,10 +42,8 @@ fn fit_gaussian(data: Array2<f64>) -> anyhow::Result<()> {
         [0.101, 0.31],
     ];
 
-    ess.initialise(&start)?;
-
-    let move_handler = MoveHandler::default();
-    ess.run_sampler(0, move_handler)?;
+    ess.initialise(start.view())?;
+    ess.run_sampler(0)?;
 
     Ok(())
 }
