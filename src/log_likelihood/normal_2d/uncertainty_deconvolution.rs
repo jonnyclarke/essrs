@@ -250,6 +250,7 @@ impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
     use ndarray::array;
 
     use super::*;
@@ -269,5 +270,51 @@ mod tests {
         let _ = gmm.get_index_kth_y_mu(0);
         let _ = gmm.get_index_kth_y_er(0);
         let _ = gmm.get_index_kth_p(0);
+    }
+
+    #[test]
+    fn test_columnar_transform_physical_to_internal() -> anyhow::Result<()> {
+        let d = array![[1.1, 1.2, 0.1, 0.2, 0.0]];
+
+        let physical = array![
+            [1.1, 1.1, 0.5, 0.5, 0.2, 1.2, 1.3, 0.5, 0.5, 0.2],
+            [1.1, 1.1, 0.5, 0.5, 0.2, 1.2, 1.3, 0.5, 0.5, 0.2],
+        ];
+        let gmm = GaussianMixModel2DimUnDeConv::new(d, 2);
+
+        let mut internal = physical.clone();
+
+        gmm.columnar_transform_physical_to_internal(physical.view(), internal.view_mut())?;
+
+        let target = array![
+            [
+                1.1,
+                1.1,
+                softplus_inverse(0.5)?,
+                softplus_inverse(0.5)?,
+                tanh_inverse(0.2)?,
+                softplus_inverse(0.1)?,
+                1.3,
+                softplus_inverse(0.5)?,
+                softplus_inverse(0.5)?,
+                tanh_inverse(0.2)?
+            ],
+            [
+                1.1,
+                1.1,
+                softplus_inverse(0.5)?,
+                softplus_inverse(0.5)?,
+                tanh_inverse(0.2)?,
+                softplus_inverse(0.1)?,
+                1.3,
+                softplus_inverse(0.5)?,
+                softplus_inverse(0.5)?,
+                tanh_inverse(0.2)?
+            ],
+        ];
+
+        assert_relative_eq!(internal, target, epsilon = 1e-8);
+
+        Ok(())
     }
 }

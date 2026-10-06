@@ -23,4 +23,5 @@ dev = [
     "ipython>=8.39.0",
     "maturin>=1.15.0",
     "numpy>=2.2.6",
+    "zeus-mcmc>=2.5.4",
 ]
