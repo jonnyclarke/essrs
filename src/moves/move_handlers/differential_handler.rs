@@ -1,19 +1,15 @@
-use rand;
-
 use crate::{
     log_likelihood::WrappedLogLikelihoodModel,
     moves::{DifferentialMove, EnsembleMove, EnsembleMoveHandler, MoveType},
 };
 
 pub struct DifferentialHandler {
-    rand: rand::rngs::ThreadRng,
     move_differential: DifferentialMove,
 }
 
 impl DifferentialHandler {
     pub fn new() -> Self {
         Self {
-            rand: rand::rng(),
             move_differential: DifferentialMove::new(),
         }
     }
@@ -37,8 +33,7 @@ impl EnsembleMoveHandler for DifferentialHandler {
         state_i: &crate::state::WalkerState,
         state_j: &mut crate::state::WalkerState,
     ) -> anyhow::Result<()> {
-        self.move_differential
-            .jump(&mut self.rand, model, state_i, state_j)?;
+        self.move_differential.jump(model, state_i, state_j)?;
 
         Ok(())
     }

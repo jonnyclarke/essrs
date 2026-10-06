@@ -9,8 +9,6 @@ use crate::{
 const DEFAULT_N_MOVE_PER_NORMAL: usize = 10;
 
 pub struct DiffNormHandler {
-    rand: rand::rngs::ThreadRng,
-
     move_differential: DifferentialMove, // differential move struct
     move_gaussian: GaussianMove,         // gaussian move struct
 
@@ -20,7 +18,6 @@ pub struct DiffNormHandler {
 impl DiffNormHandler {
     pub fn new(n_move_per_norm: usize) -> Self {
         Self {
-            rand: rand::rng(),
             move_differential: DifferentialMove::new(),
             move_gaussian: GaussianMove::new(),
 
@@ -52,14 +49,8 @@ impl EnsembleMoveHandler for DiffNormHandler {
     ) -> anyhow::Result<()> {
         let switch = self.choose_move(iteration);
         match switch {
-            MoveType::Gaussian => {
-                self.move_gaussian
-                    .jump(&mut self.rand, model, state_i, state_j)?
-            }
-            MoveType::Differential => {
-                self.move_differential
-                    .jump(&mut self.rand, model, state_i, state_j)?
-            }
+            MoveType::Gaussian => self.move_gaussian.jump(model, state_i, state_j)?,
+            MoveType::Differential => self.move_differential.jump(model, state_i, state_j)?,
         }
 
         Ok(())

@@ -20,9 +20,8 @@ pub trait EnsembleMove {
     fn get_likelihood_floor(&self, rng: &mut dyn RngCore) -> f64 {
         rng.random_range(0.0_f64..1.0_f64).ln()
     }
-    fn jump<L: WrappedLogLikelihoodModel, R: Rng>(
+    fn jump<L: WrappedLogLikelihoodModel>(
         &self,
-        rng: &mut R,
         log_likelihood_model: &L,
         state_i: &WalkerState,
         state_j: &mut WalkerState,

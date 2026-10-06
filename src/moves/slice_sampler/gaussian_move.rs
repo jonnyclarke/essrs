@@ -9,7 +9,6 @@
 use anyhow;
 use nalgebra::{Cholesky, DMatrix, DVector};
 use ndarray::{Array1, Array2};
-use rand::Rng;
 use rand_distr::{Distribution, StandardNormal};
 use thiserror::Error;
 
@@ -76,13 +75,13 @@ impl Default for GaussianMove {
 }
 
 impl EnsembleMove for GaussianMove {
-    fn jump<L: LogLikelihoodModel, R: Rng>(
+    fn jump<L: LogLikelihoodModel>(
         &self,
-        rng: &mut R,
         log_likelihood_model: &L,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
     ) -> anyhow::Result<()> {
+        let mut rng = rand::rng();
         let state_matrix = state_i.get_state_matrix().to_owned();
 
         let cov = state_to_covariance(state_matrix)?;
@@ -98,11 +97,11 @@ impl EnsembleMove for GaussianMove {
 
         for i in 0..state_i.get_ll_vector().len() {
             // get the threshold for acceptance
-            let ll_floor = state_i.get_ith_ll(i) + self.get_likelihood_floor(rng);
+            let ll_floor = state_i.get_ith_ll(i) + self.get_likelihood_floor(&mut rng);
 
             let current = state_i.get_ith_state_vector(i).to_owned();
 
-            let z = DVector::from_iterator(dim, (0..dim).map(|_| StandardNormal.sample(rng)));
+            let z = DVector::from_iterator(dim, (0..dim).map(|_| StandardNormal.sample(&mut rng)));
             let direction = Array1::from((&l * &z).iter().cloned().collect::<Vec<f64>>());
 
             let search_bounds = step_out(
@@ -115,7 +114,7 @@ impl EnsembleMove for GaussianMove {
             )?;
 
             let log_likelihood = step_in(
-                rng,
+                &mut rng,
                 log_likelihood_model,
                 current.view(),
                 direction.view(),
