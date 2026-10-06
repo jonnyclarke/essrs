@@ -36,7 +36,7 @@ pub enum LogLikelihoodError {
 }
 
 /// Trait for valid log-likelihood models.
-pub trait LogLikelihoodModel {
+pub trait LogLikelihoodModel: Send + Sync {
     /// Transform initial conditions into the internal phase space
     fn columnar_transform_physical_to_internal(
         &self,
