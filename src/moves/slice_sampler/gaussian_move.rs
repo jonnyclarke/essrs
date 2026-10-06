@@ -9,7 +9,7 @@
 use anyhow;
 use nalgebra::{Cholesky, DMatrix, DVector};
 use ndarray::{Array1, Array2};
-use rand::RngCore;
+use rand::Rng;
 use rand_distr::{Distribution, StandardNormal};
 use thiserror::Error;
 
@@ -76,10 +76,10 @@ impl Default for GaussianMove {
 }
 
 impl EnsembleMove for GaussianMove {
-    fn jump(
+    fn jump<L: LogLikelihoodModel, R: Rng>(
         &self,
-        rng: &mut dyn RngCore,
-        log_likelihood_model: &dyn LogLikelihoodModel,
+        rng: &mut R,
+        log_likelihood_model: &L,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
     ) -> anyhow::Result<()> {
@@ -91,6 +91,10 @@ impl EnsembleMove for GaussianMove {
         // Obtain Cholesky matrix
         let chol = Cholesky::new(cov).ok_or(GaussianMoveError::CovarianceToCholeskyError)?;
         let l = chol.l();
+
+        // we generate multiple scratch arrays to avoid constantly re-allocating
+        let mut internal = state_i.get_ith_state_vector(0).to_owned();
+        let mut physical = state_i.get_ith_state_vector(0).to_owned();
 
         for i in 0..state_i.get_ll_vector().len() {
             // get the threshold for acceptance
@@ -105,20 +109,23 @@ impl EnsembleMove for GaussianMove {
                 log_likelihood_model,
                 current.view(),
                 direction.view(),
+                &mut internal.view_mut(),
+                &mut physical.view_mut(),
                 ll_floor,
             )?;
 
-            let (ll, accepted) = step_in(
+            let log_likelihood = step_in(
                 rng,
                 log_likelihood_model,
                 current.view(),
                 direction.view(),
                 search_bounds,
-                ll_floor,
+                &mut internal.view_mut(),
+                &mut physical.view_mut(),
             )?;
 
-            state_j.get_mut_ith_state_vector(i).assign(&accepted);
-            *state_j.get_mut_ith_ll(i) = ll;
+            state_j.get_mut_ith_state_vector(i).assign(&internal);
+            *state_j.get_mut_ith_ll(i) = log_likelihood;
         }
 
         Ok(())

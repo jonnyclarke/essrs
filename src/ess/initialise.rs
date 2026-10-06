@@ -1,12 +1,11 @@
-use std::time::Instant;
-
-use ndarray::Array2;
+use ndarray::ArrayView2;
 use thiserror::Error;
 
 use crate::{
     chains::ChainBuffer,
     ess::EnsembleSliceSampler,
-    log_likelihood::{LogLikelihoodError, LogLikelihoodModel, WrappedLogLikelihoodModel},
+    log_likelihood::{LogLikelihoodError, WrappedLogLikelihoodModel},
+    moves::EnsembleMoveHandler,
 };
 
 #[derive(Debug, Error)]
@@ -15,26 +14,25 @@ pub enum InitialisationError {
     InvalidLogLikelihood(#[from] LogLikelihoodError),
 }
 
-impl<C: ChainBuffer, L: LogLikelihoodModel> EnsembleSliceSampler<C, L> {
-    pub fn initialise(&mut self, initial: &Array2<f64>) -> Result<(), InitialisationError> {
-        self.state_i.get_mut_state_matrix().assign(
-            &self
-                .model
-                .wrapped_columnar_transform_physical_to_internal(initial)?,
-        );
+impl<C: ChainBuffer, M: EnsembleMoveHandler, L: WrappedLogLikelihoodModel>
+    EnsembleSliceSampler<C, M, L>
+{
+    pub fn initialise(&mut self, physical: ArrayView2<f64>) -> Result<(), InitialisationError> {
+        let internal = self.state_i.get_mut_state_matrix();
 
-        let start_time = Instant::now();
+        self.model
+            .wrapped_columnar_transform_physical_to_internal(physical, internal)?;
+
+        // this is used simply to pass to log-likelihood in case we need to report an error
+        // TODO: can get rid of this allocation?
+        let mut physical = self.state_i.get_ith_state_vector(0).to_owned();
+
         for i in 0..self.n_walkers {
-            *self.state_i.get_mut_ith_ll(i) = self
-                .model
-                .wrapped_log_likelihood(self.state_i.get_ith_state_vector(i))?
+            *self.state_i.get_mut_ith_ll(i) = self.model.wrapped_log_likelihood(
+                self.state_i.get_ith_state_vector(i),
+                &mut physical.view_mut(),
+            )?;
         }
-        let duration = start_time.elapsed();
-
-        println!(
-            "INITIALISATION COMPLETE -- {} micro-s per walker",
-            duration.as_micros() / self.n_walkers as u128
-        );
 
         Ok(())
     }
@@ -54,12 +52,13 @@ mod tests {
     fn test_initialise() -> anyhow::Result<()> {
         let mut ess = build_test_ess();
 
-        ess.initialise(&array![
+        let data = array![
             [0.0_f64, 1.0_f64],
             [1.0_f64, 1.0_f64],
             [-1.0_f64, 1.0_f64],
             [2.0_f64, 1.0_f64]
-        ])?;
+        ];
+        ess.initialise(data.view())?;
 
         let expected_ll = array![
             (softplus_inverse(1.0_f64)? - 1.0)

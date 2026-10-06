@@ -1,7 +1,7 @@
 //! Implementation of statistical uncertainty deconvolution
 
 use anyhow;
-use ndarray::{Array1, Array2, ArrayView1, Zip};
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2, Zip};
 
 use crate::{
     functions::{
@@ -94,10 +94,12 @@ impl GaussianMixModel2DimUnDeConv {
 impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
     fn columnar_transform_physical_to_internal(
         &self,
-        physical: &Array2<f64>,
-    ) -> anyhow::Result<Array2<f64>> {
+        physical: ArrayView2<f64>,
+        mut internal: ArrayViewMut2<f64>,
+    ) -> anyhow::Result<()> {
         let n_comp = self.get_n_components();
-        let mut internal = physical.to_owned();
+
+        internal.assign(&physical);
 
         for k in 0..n_comp {
             apply_transform_column(softplus_inverse, &mut internal, self.get_index_kth_x_er(k))?;
@@ -126,15 +128,17 @@ impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
             }
         }
 
-        Ok(internal)
+        Ok(())
     }
 
     fn columnar_transform_internal_to_physical(
         &self,
-        internal: &Array2<f64>,
-    ) -> anyhow::Result<Array2<f64>> {
+        internal: ArrayView2<f64>,
+        mut physical: ArrayViewMut2<f64>,
+    ) -> anyhow::Result<()> {
         let n_comp = self.get_n_components();
-        let mut physical = internal.to_owned();
+
+        physical.assign(&internal);
 
         for k in 0..n_comp {
             // for all ordinal mean values, except anchor point, we first apply softplus transform to map unconstrained value to >0
@@ -156,25 +160,18 @@ impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
             apply_transform_column(tanh_x, &mut physical, self.get_index_kth_p(k))?;
         }
 
-        Ok(physical)
+        Ok(())
     }
 
     fn convert_internal_to_physical_tracking_ll_warp(
         &self,
+        log_jacobian: &mut f64,
         internal: ArrayView1<f64>,
-    ) -> anyhow::Result<(f64, Array1<f64>)> {
+        physical: &mut ArrayViewMut1<f64>,
+    ) -> anyhow::Result<()> {
         let n_comp = self.get_n_components();
 
-        let mut lj = 0.0;
-        let mut physical = internal.to_owned();
-
-        //         let i0 = self.get_index_kth_x_mu(k - 1);
-        // let i1 = self.get_index_kth_x_mu(k);
-
-        // let [x0, x1] = physical.get_many_mut([i0, i1])
-        //     .expect("indices must be distinct");
-
-        // ordinal_sequencer(&*x0, x1)?;
+        physical.assign(&internal);
 
         for k in 0..n_comp {
             match k {
@@ -182,23 +179,23 @@ impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
                 _ => {
                     softplus_log_jacobian_inplace(
                         &mut physical[self.get_index_kth_x_mu(k)],
-                        &mut lj,
+                        log_jacobian,
                     )?;
                     let x0 = physical[self.get_index_kth_x_mu(k - 1)];
                     ordinal_sequencer(x0, &mut physical[self.get_index_kth_x_mu(k)])?
                 }
             }
-            softplus_log_jacobian_inplace(&mut physical[self.get_index_kth_x_er(k)], &mut lj)?;
-            softplus_log_jacobian_inplace(&mut physical[self.get_index_kth_y_er(k)], &mut lj)?;
-            tanh_log_jacobian_inplace(&mut physical[self.get_index_kth_p(k)], &mut lj)?;
+            softplus_log_jacobian_inplace(&mut physical[self.get_index_kth_x_er(k)], log_jacobian)?;
+            softplus_log_jacobian_inplace(&mut physical[self.get_index_kth_y_er(k)], log_jacobian)?;
+            tanh_log_jacobian_inplace(&mut physical[self.get_index_kth_p(k)], log_jacobian)?;
         }
 
-        Ok((lj, physical))
+        Ok(())
     }
 
     /// here we have the annoying problem that we need to add raw likelihood together for each of the components.
     /// This requires use of the log_sum_exp function implemented in functions module.
-    fn log_likelihood(&self, physical: &Array1<f64>) -> anyhow::Result<f64> {
+    fn log_likelihood(&self, physical: ArrayView1<f64>) -> anyhow::Result<f64> {
         // extract views of the data
         let x = self.get_x_value();
         let y = self.get_y_value();

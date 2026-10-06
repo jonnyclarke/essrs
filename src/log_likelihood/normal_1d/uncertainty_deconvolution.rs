@@ -1,9 +1,7 @@
 //! Log-likelihood function
 
-use std::marker::PhantomData;
-
 use anyhow;
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
 use rand_distr::{Distribution, LogNormal, Normal};
 
 use crate::{
@@ -18,79 +16,65 @@ use crate::{
 };
 
 pub struct GaussianLl1dDataErrors {
-    data: Array2<f64>,
-    _type: PhantomData<f64>,
+    mu: Array1<f64>,
+    sigma_sqr: Array1<f64>,
 }
 
 impl GaussianLl1dDataErrors {
-    pub fn new(data: Array2<f64>) -> Self {
-        Self {
-            data,
-            _type: PhantomData,
-        }
-    }
+    pub fn new(data: &Array2<f64>) -> Self {
+        let mu = data.column(0).to_owned();
+        let mut sigma_sqr = data.column(1).to_owned();
+        sigma_sqr.iter_mut().for_each(|x| *x = *x * *x);
 
-    fn get_data_values<'a>(&'a self) -> ArrayView1<'a, f64> {
-        self.data.column(0)
-    }
-
-    fn get_data_errors<'a>(&'a self) -> ArrayView1<'a, f64> {
-        self.data.column(1)
+        Self { mu, sigma_sqr }
     }
 }
 
 impl LogLikelihoodModel for GaussianLl1dDataErrors {
     fn columnar_transform_physical_to_internal(
         &self,
-        physical: &Array2<f64>,
-    ) -> anyhow::Result<Array2<f64>> {
-        let mut internal = physical.to_owned();
+        physical: ArrayView2<f64>,
+        mut internal: ArrayViewMut2<f64>,
+    ) -> anyhow::Result<()> {
+        internal.assign(&physical);
         apply_transform_column(softplus_inverse, &mut internal, 1)?;
 
-        Ok(internal)
+        Ok(())
     }
 
     fn columnar_transform_internal_to_physical(
         &self,
-        internal: &Array2<f64>,
-    ) -> anyhow::Result<Array2<f64>> {
-        let mut physical = internal.to_owned();
+        internal: ArrayView2<f64>,
+        mut physical: ArrayViewMut2<f64>,
+    ) -> anyhow::Result<()> {
+        physical.assign(&internal);
         apply_transform_column(softplus, &mut physical, 1)?;
 
-        Ok(physical)
+        Ok(())
     }
 
     fn convert_internal_to_physical_tracking_ll_warp(
         &self,
-        parameters: ArrayView1<f64>,
-    ) -> anyhow::Result<(f64, Array1<f64>)> {
-        let mut ll = 0.0;
+        log_jacobian: &mut f64,
+        internal: ArrayView1<f64>,
+        physical: &mut ArrayViewMut1<f64>,
+    ) -> anyhow::Result<()> {
+        physical.assign(&internal);
 
-        let mut modified_parameters = parameters.to_owned();
+        softplus_log_jacobian_inplace(&mut physical[1], log_jacobian)?;
 
-        softplus_log_jacobian_inplace(&mut modified_parameters[1], &mut ll)?;
-
-        Ok((ll, modified_parameters))
+        Ok(())
     }
 
-    fn log_likelihood(&self, parameters: &Array1<f64>) -> anyhow::Result<f64> {
-        let mut ll = 0.0;
-
+    fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let mu = parameters[0];
         let sigma2 = parameters[1].powi(2);
 
-        let data_values = self.get_data_values();
-        let data_errors = self.get_data_errors();
-
-        ll += data_values
+        let ll = self
+            .mu
             .iter()
-            .zip(data_errors.iter())
-            .map(|(v, e)| {
-                // get the expanded variance for use in the computation
-                let sigma2conv = sigma2 + e.powi(2);
-
-                log_normalised_gaussian_s2(*v, mu, sigma2conv)
-            })
+            .zip(self.sigma_sqr.iter())
+            .map(|(v, e2)| log_normalised_gaussian_s2(*v, mu, sigma2 + e2))
             .sum::<f64>();
 
         Ok(ll)
@@ -136,12 +120,15 @@ mod tests {
 
     #[test]
     fn test_log_likelihood_computation() -> anyhow::Result<()> {
-        let model = GaussianLl1dDataErrors::new(array![[1.0, 0.0], [2.0, 0.0], [3.0, 0.0]]);
+        let model = GaussianLl1dDataErrors::new(&array![[1.0, 0.0], [2.0, 0.0], [3.0, 0.0]]);
 
         // Parameters: mu = 2.0, log_sigma = ln(1.0) = 0.0
-        let parameters = array![2.0, softplus_inverse(1.0)?];
+        let internal = array![2.0, softplus_inverse(1.0)?];
+        let mut physical = array![0.0, 0.0];
 
-        let ll = model.wrapped_log_likelihood(parameters.view())?;
+        let ll = model.wrapped_log_likelihood(internal.view(), &mut physical.view_mut())?;
+
+        assert_eq!(physical, array![2.0, 1.0]);
 
         // Expected: manually compute negative half sum of squared z-scores plus log term
         // z = (x - mu) / sigma = [-1, 0, 1], z^2 sum = 2

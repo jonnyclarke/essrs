@@ -5,7 +5,7 @@ pub mod ordseq;
 pub mod softplus;
 pub mod tanh;
 
-use ndarray::{Array1, ArrayView1, s};
+use ndarray::{Array1, ArrayView1, ArrayViewMut2, s};
 use thiserror::Error;
 
 use crate::functions::numerical::NumericalError;
@@ -58,11 +58,9 @@ where
     Ok(out)
 }
 
-use ndarray::Array2;
-
 pub fn apply_transform_column<F>(
     f: F,
-    array: &mut Array2<f64>,
+    array: &mut ArrayViewMut2<f64>,
     col: usize,
 ) -> Result<(), TransformHelperError>
 where
@@ -82,7 +80,7 @@ where
 /// An example of usage is to provide ordered softplus transforms.
 pub fn apply_inplace_multi_column_transform<F>(
     f: F,
-    array: &mut Array2<f64>,
+    array: &mut ArrayViewMut2<f64>,
     col1: usize,
     col2: usize,
 ) -> Result<(), TransformHelperError>
@@ -233,7 +231,7 @@ mod tests {
                 *x += x0;
                 Ok(())
             },
-            &mut arr,
+            &mut arr.view_mut(),
             0,
             1,
         )?;

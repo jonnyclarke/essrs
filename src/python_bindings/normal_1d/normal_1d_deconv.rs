@@ -1,14 +1,13 @@
 use numpy::{PyArray3, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use crate::chains::ChainBuffer;
+use crate::{chains::ChainBuffer, moves::move_handlers::differential_handler::DifferentialHandler};
 use crate::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
     log_likelihood::normal_1d::{
         GaussianLl1dDataErrors, // Likelihood model for 1d Gaussian data with errors
     },
-    moves::MoveHandler, // struct defining which moves to use
 };
 
 #[pyfunction]
@@ -24,20 +23,23 @@ pub fn normal_1d_deconv<'py>(
     let n_parameters: usize = initial_conditions.ncols();
 
     let d = data.as_array().to_owned();
-    let model = GaussianLl1dDataErrors::new(d);
 
     let chains = StaticBuffer::new(max_n_steps, n_walkers, n_parameters);
-    let mut ess = EnsembleSliceSampler::<StaticBuffer, GaussianLl1dDataErrors>::new(
-        max_n_steps,
-        n_walkers,
-        n_parameters,
-        chains,
-        model,
-    );
+    let move_handler = DifferentialHandler::new();
+    let model = GaussianLl1dDataErrors::new(&d);
 
-    ess.initialise(&initial_conditions).unwrap(); // compute log-likelihood of initial positions
-    let move_handler = MoveHandler::default(); // use default move setup 90% differential + 10% gaussian 
-    ess.run_sampler(n_burn_in, move_handler).unwrap(); // run sampler
+    let mut ess =
+        EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, GaussianLl1dDataErrors>::new(
+            max_n_steps,
+            n_walkers,
+            n_parameters,
+            chains,
+            move_handler,
+            model,
+        );
+
+    ess.initialise(initial_conditions.view()).unwrap(); // compute log-likelihood of initial positions
+    ess.run_sampler(n_burn_in).unwrap(); // run sampler
 
     let result = ess.chains.extract_state();
 

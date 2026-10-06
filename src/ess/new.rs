@@ -1,14 +1,17 @@
 use crate::{
-    chains::ChainBuffer, ess::EnsembleSliceSampler, log_likelihood::LogLikelihoodModel,
-    state::WalkerState,
+    chains::ChainBuffer, ess::EnsembleSliceSampler, log_likelihood::WrappedLogLikelihoodModel,
+    moves::EnsembleMoveHandler, state::WalkerState,
 };
 
-impl<C: ChainBuffer, L: LogLikelihoodModel> EnsembleSliceSampler<C, L> {
+impl<C: ChainBuffer, M: EnsembleMoveHandler, L: WrappedLogLikelihoodModel>
+    EnsembleSliceSampler<C, M, L>
+{
     pub fn new(
         max_n_steps: usize,
         n_walkers: usize,
         n_parameters: usize,
         chains: C,
+        move_handler: M,
         model: L,
     ) -> Self {
         let required_walkers = (n_parameters * 2).max(3);
@@ -20,12 +23,11 @@ impl<C: ChainBuffer, L: LogLikelihoodModel> EnsembleSliceSampler<C, L> {
             n_parameters,
 
             chains,
+            move_handler,
             model,
 
             state_i: WalkerState::new(n_walkers, n_parameters),
             state_j: WalkerState::new(n_walkers, n_parameters),
-
-            rng: rand::rng(),
         }
     }
 }

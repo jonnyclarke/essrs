@@ -15,7 +15,7 @@ pub mod normal_1d;
 pub mod normal_2d;
 
 use anyhow;
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::{Array1, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -40,37 +40,49 @@ pub trait LogLikelihoodModel {
     /// Transform initial conditions into the internal phase space
     fn columnar_transform_physical_to_internal(
         &self,
-        parameters: &Array2<f64>,
-    ) -> anyhow::Result<Array2<f64>> {
-        Ok(parameters.to_owned())
+        physical: ArrayView2<f64>,
+        mut internal: ArrayViewMut2<f64>,
+    ) -> anyhow::Result<()> {
+        internal.assign(&physical);
+
+        Ok(())
     }
 
     fn columnar_transform_internal_to_physical(
         &self,
-        parameters: &Array2<f64>,
-    ) -> anyhow::Result<Array2<f64>> {
-        Ok(parameters.to_owned())
+        internal: ArrayView2<f64>,
+        mut physical: ArrayViewMut2<f64>,
+    ) -> anyhow::Result<()> {
+        physical.assign(&internal);
+
+        Ok(())
     }
 
     /// Transform parameter vector into physical space from internal space.
     /// This function also returns the value of the log-likelihood modification due to the phase space distortion
     fn convert_internal_to_physical_tracking_ll_warp(
         &self,
-        parameters: ArrayView1<f64>,
-    ) -> anyhow::Result<(f64, Array1<f64>)> {
-        Ok((0.0, parameters.to_owned()))
+        log_jacobian: &mut f64,
+        internal: ArrayView1<f64>,
+        physical: &mut ArrayViewMut1<f64>,
+    ) -> anyhow::Result<()> {
+        *log_jacobian = 0.0;
+        physical.assign(&internal);
+
+        Ok(())
     }
 
     /// Returns the log-likelihood for a given set of parameters.
-    fn log_likelihood(&self, parameters: &Array1<f64>) -> anyhow::Result<f64>;
+    fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64>;
 }
 
 pub trait WrappedLogLikelihoodModel: LogLikelihoodModel {
     fn wrapped_columnar_transform_physical_to_internal(
         &self,
-        parameters: &Array2<f64>,
-    ) -> Result<Array2<f64>, LogLikelihoodError> {
-        let x = self.columnar_transform_physical_to_internal(parameters)
+        physical: ArrayView2<f64>,
+        internal: ArrayViewMut2<f64>,
+    ) -> Result<(), LogLikelihoodError> {
+        self.columnar_transform_physical_to_internal(physical, internal)
             .map_err(
                 |source| LogLikelihoodError::UserDefLogLikelihoodFnError {
                     context_string: "Parameter conversion, columnwise, from physical to internal scale has failed",
@@ -78,14 +90,15 @@ pub trait WrappedLogLikelihoodModel: LogLikelihoodModel {
                 }
             )?;
 
-        Ok(x)
+        Ok(())
     }
 
     fn wrapped_columnar_transform_internal_to_physical(
         &self,
-        parameters: &Array2<f64>,
-    ) -> Result<Array2<f64>, LogLikelihoodError> {
-        let x = self.columnar_transform_internal_to_physical(parameters)
+        internal: ArrayView2<f64>,
+        physical: ArrayViewMut2<f64>,
+    ) -> Result<(), LogLikelihoodError> {
+        self.columnar_transform_internal_to_physical(internal, physical)
             .map_err(
                 |source| LogLikelihoodError::UserDefLogLikelihoodFnError {
                     context_string: "Parameter conversion, columnwise, from internal to physical scale has failed",
@@ -93,14 +106,16 @@ pub trait WrappedLogLikelihoodModel: LogLikelihoodModel {
                 }
             )?;
 
-        Ok(x)
+        Ok(())
     }
 
     fn wrapped_convert_internal_to_physical_tracking_ll_warp(
         &self,
-        parameters: ArrayView1<f64>,
-    ) -> Result<(f64, Array1<f64>), LogLikelihoodError> {
-        let x = self.convert_internal_to_physical_tracking_ll_warp(parameters)
+        log_jacobian: &mut f64,
+        internal: ArrayView1<f64>,
+        physical: &mut ArrayViewMut1<f64>,
+    ) -> Result<(), LogLikelihoodError> {
+        self.convert_internal_to_physical_tracking_ll_warp(log_jacobian, internal, physical)
             .map_err(
                 |source| LogLikelihoodError::UserDefLogLikelihoodFnError {
                     context_string: "parameter conversion, tracking log-jacobian contribution, from internal to physical scale has failed",
@@ -108,38 +123,44 @@ pub trait WrappedLogLikelihoodModel: LogLikelihoodModel {
                 }
             )?;
 
-        Ok(x)
+        Ok(())
     }
 
     /// DO NOT RE-IMPLEMENT! -- extract to a different trait that cannot be re-implemented.
     /// this is the only time the users log-likelihood function is called and we wrap it in order to
     fn wrapped_log_likelihood(
         &self,
-        parameters: ArrayView1<f64>,
+        internal: ArrayView1<f64>,
+        physical: &mut ArrayViewMut1<f64>,
     ) -> Result<f64, LogLikelihoodError> {
-        let (ll_phase_transform, modified_parameters) =
-            self.wrapped_convert_internal_to_physical_tracking_ll_warp(parameters)?;
+        let mut log_jacobian: f64 = 0.0;
 
-        let ll_parameters = self
-            .log_likelihood(&modified_parameters)
-            .map_err(|source| LogLikelihoodError::UserDefLogLikelihoodFnError {
+        self.wrapped_convert_internal_to_physical_tracking_ll_warp(
+            &mut log_jacobian,
+            internal,
+            physical,
+        )?;
+
+        let ll_parameters = self.log_likelihood(physical.view()).map_err(|source| {
+            LogLikelihoodError::UserDefLogLikelihoodFnError {
                 context_string: "user-defined log-likelihood function has failed",
                 source,
-            })?;
+            }
+        })?;
 
         if ll_parameters.is_nan() {
             return Err(LogLikelihoodError::LogLikelihoodIsNan {
-                params: modified_parameters,
+                params: physical.to_owned(),
             });
         }
 
         if ll_parameters.is_infinite() {
             return Err(LogLikelihoodError::LogLikelihoodIsInfinite {
-                params: modified_parameters,
+                params: physical.to_owned(),
             });
         }
 
-        Ok(ll_phase_transform + ll_parameters)
+        Ok(log_jacobian + ll_parameters)
     }
 }
 

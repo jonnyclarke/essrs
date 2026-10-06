@@ -1,30 +1,33 @@
 mod initialise;
 mod new;
 
-use std::{path::Path, time::Instant};
-
-use rand::{self};
-use tracing::info;
+use std::path::Path;
 
 use crate::{
-    chains::ChainBuffer, log_likelihood::LogLikelihoodModel, moves::MoveHandler, state::WalkerState,
+    chains::ChainBuffer, log_likelihood::WrappedLogLikelihoodModel, moves::EnsembleMoveHandler,
+    state::WalkerState,
 };
 
-pub struct EnsembleSliceSampler<C: ChainBuffer, L: LogLikelihoodModel> {
+pub struct EnsembleSliceSampler<
+    C: ChainBuffer,
+    M: EnsembleMoveHandler,
+    L: WrappedLogLikelihoodModel,
+> {
     max_n_steps: usize,
     n_walkers: usize,
     n_parameters: usize,
 
     pub chains: C,
+    pub move_handler: M,
     pub model: L,
 
     state_i: WalkerState,
     state_j: WalkerState,
-
-    rng: rand::rngs::ThreadRng,
 }
 
-impl<C: ChainBuffer, L: LogLikelihoodModel> EnsembleSliceSampler<C, L> {
+impl<C: ChainBuffer, M: EnsembleMoveHandler, L: WrappedLogLikelihoodModel>
+    EnsembleSliceSampler<C, M, L>
+{
     pub fn accept_proposed_state(&mut self) {
         // let mut state0 = self.state_i.get_mut_state_matrix();
         self.state_i
@@ -37,17 +40,11 @@ impl<C: ChainBuffer, L: LogLikelihoodModel> EnsembleSliceSampler<C, L> {
             .assign(&self.state_j.get_mut_ll_vector());
     }
 
-    pub fn run_sampler(
-        &mut self,
-        n_burn_in: usize,
-        move_handler: MoveHandler,
-    ) -> anyhow::Result<()> {
-        let start_time = Instant::now();
-
+    pub fn run_sampler(&mut self, n_burn_in: usize) -> anyhow::Result<()> {
         // we allow burn in to eliminate effect on chains of the starting point
-        for _ in 1..n_burn_in {
-            move_handler.distribute_jump(
-                &mut self.rng,
+        for iteration in 1..=n_burn_in {
+            self.move_handler.distribute_jump(
+                iteration,
                 &self.model,
                 &self.state_i,
                 &mut self.state_j,
@@ -55,36 +52,21 @@ impl<C: ChainBuffer, L: LogLikelihoodModel> EnsembleSliceSampler<C, L> {
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
         }
 
-        for i in 1..=self.max_n_steps {
-            info!(iteration = i);
-            move_handler.distribute_jump(
-                &mut self.rng,
+        for iteration in 1..=self.max_n_steps {
+            self.move_handler.distribute_jump(
+                iteration,
                 &self.model,
                 &self.state_i,
                 &mut self.state_j,
             )?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
 
-            let sampler_state = &self.state_i.get_state_matrix().to_owned();
-            self.chains.record_state(
-                &self
-                    .model
-                    .columnar_transform_internal_to_physical(sampler_state)?,
-            );
+            let internal = self.state_i.get_state_matrix();
+            let mut physical = internal.to_owned();
 
-            let duration = start_time.elapsed();
-
-            let projected = duration / (i as u32) * (self.max_n_steps as u32);
-
-            println!(
-                "Iteration {i} / {} :: TIME ELAPSED -- {} SEC [{} TOTAL]",
-                self.max_n_steps,
-                duration.as_secs(),
-                projected.as_secs()
-            );
-            if i % 10 == 0 {
-                self.print_quantile_summary()?;
-            }
+            self.model
+                .columnar_transform_internal_to_physical(internal, physical.view_mut())?;
+            self.chains.record_state(&physical);
         }
 
         Ok(())

@@ -9,8 +9,8 @@
 //! | We step in; we randomly sample within the range [v0 - n * d, v0 + m * d] until, at (v0', l0') the log-likelihood is greater than the acceptance threshold.
 //! | The new point v0', and corresponding likelihood, l0', are stored as next element on the MCMC walk.
 
-use ndarray::Array1;
-use rand::RngCore;
+use ndarray::{ArrayViewMut1, Zip};
+use rand::Rng;
 
 use crate::{
     log_likelihood::LogLikelihoodModel,
@@ -35,48 +35,67 @@ impl Default for DifferentialMove {
 }
 
 impl DifferentialMove {
-    fn get_vector(&self, state: &WalkerState, l: usize, r: usize) -> Array1<f64> {
-        &state.get_ith_state_vector(l) - &state.get_ith_state_vector(r)
+    fn get_vector(
+        &self,
+        state: &WalkerState,
+        l: usize,
+        r: usize,
+        direction: &mut ArrayViewMut1<f64>,
+    ) {
+        Zip::from(&mut *direction)
+            .and(&state.get_ith_state_vector(l))
+            .and(&state.get_ith_state_vector(r))
+            .for_each(|out, &left, &right| {
+                *out = left - right;
+            });
     }
 }
 
 impl EnsembleMove for DifferentialMove {
-    fn jump(
+    fn jump<L: LogLikelihoodModel, R: Rng>(
         &self,
-        rng: &mut dyn RngCore,
-        log_likelihood_model: &dyn LogLikelihoodModel,
+        rng: &mut R,
+        log_likelihood_model: &L,
         state_i: &WalkerState,
         state_j: &mut WalkerState,
     ) -> anyhow::Result<()> {
         let n_walkers = state_i.n_walkers();
 
+        // we generate multiple scratch arrays to avoid constantly re-allocating
+        let mut direction = state_i.get_ith_state_vector(0).to_owned();
+        let mut internal = state_i.get_ith_state_vector(0).to_owned();
+        let mut physical = state_i.get_ith_state_vector(0).to_owned();
+
         for i in 0..n_walkers {
             let ll_floor = state_i.get_ith_ll(i) + self.get_likelihood_floor(rng);
 
-            let current = state_i.get_ith_state_vector(i).to_owned();
+            let current = state_i.get_ith_state_vector(i);
 
             let l = get_rn_not(rng, n_walkers, i);
             let r = get_rn_not_or(rng, n_walkers, i, l);
-            let direction = self.get_vector(state_i, l, r);
+            self.get_vector(state_i, l, r, &mut direction.view_mut());
 
             let search_bounds = step_out(
                 log_likelihood_model,
                 current.view(),
                 direction.view(),
+                &mut internal.view_mut(),
+                &mut physical.view_mut(),
                 ll_floor,
             )?;
 
-            let (ll, accepted) = step_in(
+            let log_likelihood = step_in(
                 rng,
                 log_likelihood_model,
                 current.view(),
                 direction.view(),
                 search_bounds,
-                ll_floor,
+                &mut internal.view_mut(),
+                &mut physical.view_mut(),
             )?;
 
-            state_j.get_mut_ith_state_vector(i).assign(&accepted);
-            *state_j.get_mut_ith_ll(i) = ll;
+            state_j.get_mut_ith_state_vector(i).assign(&internal);
+            *state_j.get_mut_ith_ll(i) = log_likelihood;
         }
 
         Ok(())
@@ -103,6 +122,9 @@ mod tests {
 
         let diff_move = DifferentialMove::default();
 
-        assert_eq!(array![1.0], diff_move.get_vector(&state, 2, 1))
+        let mut direction = array![0.0];
+        diff_move.get_vector(&state, 2, 1, &mut direction.view_mut());
+
+        assert_eq!(direction, array![1.0])
     }
 }

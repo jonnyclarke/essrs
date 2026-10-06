@@ -1,14 +1,16 @@
 use numpy::{PyArray3, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use crate::{chains::ChainBuffer, log_likelihood::normal_2d::N_PARAMETERS_NORMAL_1D};
+use crate::{
+    chains::ChainBuffer, log_likelihood::normal_2d::N_PARAMETERS_NORMAL_1D,
+    moves::move_handlers::differential_handler::DifferentialHandler,
+};
 use crate::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
     log_likelihood::normal_2d::{
         GaussianMixModel2DimUnDeConv, // Likelihood model for 2d Gaussian MixModel data with errors
     },
-    moves::MoveHandler, // struct defining which moves to use
 };
 
 #[pyfunction]
@@ -29,20 +31,26 @@ pub fn normal_2d_gmm_deconv<'py>(
         "initial conditions sized wrong..."
     );
     let d = data.as_array().to_owned();
-    let model = GaussianMixModel2DimUnDeConv::new(d, n_components);
 
     let chains = StaticBuffer::new(max_n_steps, n_walkers, n_parameters);
-    let mut ess = EnsembleSliceSampler::<StaticBuffer, GaussianMixModel2DimUnDeConv>::new(
+    let move_handler = DifferentialHandler::new();
+    let model = GaussianMixModel2DimUnDeConv::new(d, n_components);
+
+    let mut ess = EnsembleSliceSampler::<
+        StaticBuffer,
+        DifferentialHandler,
+        GaussianMixModel2DimUnDeConv,
+    >::new(
         max_n_steps,
         n_walkers,
         n_parameters,
         chains,
+        move_handler,
         model,
     );
 
-    ess.initialise(&initial_conditions).unwrap(); // compute log-likelihood of initial positions
-    let move_handler = MoveHandler::default(); // use default move setup 90% differential + 10% gaussian 
-    ess.run_sampler(n_burn_in, move_handler).unwrap(); // run sampler
+    ess.initialise(initial_conditions.view()).unwrap(); // compute log-likelihood of initial positions
+    ess.run_sampler(n_burn_in).unwrap(); // run sampler
 
     let result = ess.chains.extract_state();
 
