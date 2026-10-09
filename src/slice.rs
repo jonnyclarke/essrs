@@ -1,5 +1,5 @@
 //! This script contains the step in and step out functions used for ensemble slice sampling
-use ndarray::{ArrayView1, ArrayViewMut1, Zip};
+use ndarray::{Array1, ArrayView1, ArrayViewMut1, Zip};
 use rand::{Rng, RngCore};
 use thiserror::Error;
 
@@ -7,10 +7,14 @@ use crate::log_likelihood::{LogLikelihoodError, LogLikelihoodModel, WrappedLogLi
 
 #[derive(Debug, Error)]
 pub enum SliceSamplerError {
-    #[error("failed stepping out left: {source}")]
+    // #[error("failed stepping out left\nanchor:\n{anchor}\ndirection: {direction}\n: {source}")]
+    #[error("failed stepping out left\nPARAMETERS:\n{parameters}\nCaused by:\n{source}")]
     StepOutLeftError {
         #[source]
         source: LogLikelihoodError,
+
+        parameters: Array1<f64>,
+        // direction: Array1<f64>,
     },
 
     #[error("failed stepping out right: {source}")]
@@ -59,7 +63,7 @@ pub fn step_out(
 
     let mut ll_l = model
         .wrapped_log_likelihood(internal.view(), physical)
-        .map_err(|source| SliceSamplerError::StepOutLeftError { source })?;
+        .map_err(|source| SliceSamplerError::StepOutLeftError { source, parameters: physical.to_owned() })?;
 
     let mut il: usize = 1;
 
@@ -75,7 +79,7 @@ pub fn step_out(
 
         ll_l = model
             .wrapped_log_likelihood(internal.view(), physical)
-            .map_err(|source| SliceSamplerError::StepOutLeftError { source })?;
+            .map_err(|source| SliceSamplerError::StepOutLeftError { source, parameters: physical.to_owned() })?;
         il += 1;
     }
 
