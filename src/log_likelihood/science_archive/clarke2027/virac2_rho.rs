@@ -170,21 +170,36 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
 
         let mut ll = 0.0;
 
+        let ln_theta = theta.ln();
+        let ln_1_sub_theta = (1.0 - theta).ln();
+
+        let ln_pi = pi.ln();
+        let ln_1_sub_pi = (1.0 - pi).ln();
+
+        let ln_w_rc = w_rc.ln();
+        let ln_1_sub_w_rc = (1.0 - w_rc).ln();
+
+        let mu0_dmu = mu0 + d_mu;
+        let mu1_dmu = mu1 + d_mu;
+
+        let f_sigma0 = f_sigma * sigma0;
+        let f_sigma1 = f_sigma * sigma1;
+
         for ks in self.ks.iter() {
             let ll_g = log_sum_exp(
-                pi.ln() + log_sum_exp(
-                    w_rc.ln() + log_normalised_gaussian(*ks, mu0, sigma0),
-                    (1.0 - w_rc).ln() + log_normalised_gaussian(*ks, mu0 + d_mu, sigma0 * f_sigma)
+                ln_pi + log_sum_exp(
+                    ln_w_rc + log_normalised_gaussian(*ks, mu0, sigma0),
+                    ln_1_sub_w_rc + log_normalised_gaussian(*ks, mu0_dmu, f_sigma0)
                 )?,
-                (1.0 - pi).ln() + log_sum_exp(
-                    w_rc.ln() + log_normalised_gaussian(*ks, mu1, sigma1),
-                    (1.0 - w_rc).ln() + log_normalised_gaussian(*ks, mu1 + d_mu, sigma1 * f_sigma)
+                ln_1_sub_pi + log_sum_exp(
+                    ln_w_rc + log_normalised_gaussian(*ks, mu1, sigma1),
+                    ln_1_sub_w_rc + log_normalised_gaussian(*ks, mu1_dmu, f_sigma1)
                 )?
             )?;
 
             let ll_mix = log_sum_exp(
-                theta.ln() + ll_g,
-                (1.0 - theta).ln() + (alpha * *ks - log_exp_int)
+                ln_theta + ll_g,
+                ln_1_sub_theta + (alpha * *ks - log_exp_int)
             )?;
 
             ll += ll_mix
