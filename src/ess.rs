@@ -98,7 +98,7 @@ impl EnsembleSliceSampler {
     ///
     /// This wraps the chain buffer object's `extract_log_likelihood_history` function
     pub fn extract_log_likelihood_history(&self) -> Array2<f64> {
-        self.chains.extract_log_likeihood_history()
+        self.chains.extract_log_likelihood_history()
     }
 
     /// Initialise from physical initial conditions

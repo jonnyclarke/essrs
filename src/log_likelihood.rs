@@ -9,6 +9,7 @@
 //! We therefore define two additional routines here, the default for which are to do nothing at all.
 //! The first is to apply the inverse transformation to the initial conditions.
 //! The second is to apply the transformation
+pub mod f_community;
 pub mod f_scientific;
 pub mod f_toy;
 
