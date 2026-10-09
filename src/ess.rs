@@ -5,7 +5,7 @@
 mod initialise;
 mod new;
 
-use ndarray::Array3;
+use ndarray::{Array3, ArrayView1};
 
 use crate::{
     chains::ChainBuffer,
@@ -99,5 +99,8 @@ impl<C: ChainBuffer, M: EnsembleMove, L: LogLikelihoodModel> EnsembleSliceSample
     /// This wraps the chain buffer object's 'extract_state' function
     pub fn extract_state(&self) -> Array3<f64> {
         self.chains.extract_state()
+    }
+    pub fn final_log_likelihood(&self) -> ArrayView1<'_, f64> {
+        self.state.get_ll_vector_view()
     }
 }

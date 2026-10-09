@@ -21,6 +21,8 @@ pub use helpers::helper_generate_random_gaussian_points;
 pub mod normal_1d;
 pub mod normal_2d;
 
+pub mod science_archive;
+
 use anyhow;
 use ndarray::{Array1, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
 use thiserror::Error;
