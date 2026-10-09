@@ -74,7 +74,7 @@ impl ChainBuffer for StaticBuffer {
         self.chains.clone()
     }
 
-    fn extract_log_likeihood_history(&self) -> Array2<f64> {
+    fn extract_log_likelihood_history(&self) -> Array2<f64> {
         self.log_likelihood.clone()
     }
 

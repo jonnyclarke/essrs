@@ -35,7 +35,7 @@ pub trait ChainBuffer {
     fn extract_state_history(&self) -> Array3<f64>;
 
     /// Extract the two dimensional log-likelihood history
-    fn extract_log_likeihood_history(&self) -> Array2<f64>;
+    fn extract_log_likelihood_history(&self) -> Array2<f64>;
 
     /// This function prints a summary of the parameters to the screen
     fn display_parameter_summaries(&self, n_params: i32);

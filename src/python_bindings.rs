@@ -1,4 +1,6 @@
 //! Construction of Python Binding
+
+mod community;
 mod moves;
 mod scientific;
 mod toy;
@@ -10,6 +12,21 @@ use crate::{
     ess::EnsembleSliceSampler,
     log_likelihood::LogLikelihoodModel,
     moves::DynEnsembleMove,
+    // +---------------------+
+    // | COMMUNITY FUNCTIONS |
+    // +---------------------+
+    python_bindings::community::{
+        // Clarke2027 -- kinematic decomposition of VIRAC-2 proper motion data
+        clarke2027::{
+            // -- proper motion fits
+            virac2_pm_rc_rgbb,
+            virac2_pm_rgb,
+            // -- density fits
+            virac2_rho_rc,
+            virac2_rho_rc_rgbb,
+            virac2_rho_rc_rgbb_2peak,
+        },
+    },
     python_bindings::{
         moves::{diffconv_move, differential_move, gaussian_move, hybrid_ddc_move},
         scientific::{normal_1d_deconv, normal_2d_gmm_deconv},
@@ -219,6 +236,23 @@ fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     moves.add_function(wrap_pyfunction!(hybrid_ddc_move, &moves)?)?;
 
     m.add_submodule(&moves)?;
+
+    // +---------------------+
+    // | COMMUNITY FUNCTIONS |
+    // +---------------------+
+    let community = PyModule::new(m.py(), "community")?;
+
+    let clarke2027 = PyModule::new(m.py(), "clarke_2027")?;
+    clarke2027.add_function(wrap_pyfunction!(virac2_rho_rc, &clarke2027)?)?; // the RC only fit. Rapid convergence?
+    clarke2027.add_function(wrap_pyfunction!(virac2_rho_rc_rgbb, &clarke2027)?)?;
+    clarke2027.add_function(wrap_pyfunction!(virac2_rho_rc_rgbb_2peak, &clarke2027)?)?;
+
+    clarke2027.add_function(wrap_pyfunction!(virac2_pm_rgb, &clarke2027)?)?;
+    clarke2027.add_function(wrap_pyfunction!(virac2_pm_rc_rgbb, &clarke2027)?)?;
+
+    community.add_submodule(&clarke2027)?;
+
+    m.add_submodule(&community)?;
 
     Ok(())
 }
