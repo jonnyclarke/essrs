@@ -1,6 +1,8 @@
 //! Helper functions to transform parameters from unconstrained spaces to constrained space
 //! and apply the relevant Jacobian correction to the log-likelihood to account for the transform.
 
+pub mod exponential;
+pub mod logistic;
 pub mod ordseq;
 pub mod softplus;
 pub mod tanh;
@@ -99,31 +101,6 @@ where
     Ok(())
 }
 
-// Function to apply the exponential change of variable
-pub fn lj_exp(x: f64, ll: &mut f64) -> f64 {
-    *ll += x;
-    x.exp()
-}
-
-/// Function to apply logistic transform.
-/// Maps values to interval (0, 1) asymptotically [values never reach 0 or 1].
-/// 1 / (1 + exp(-x))
-///
-/// $$
-/// y = \frac{1}{1 + e^{-x}}
-/// $$
-///
-/// $$
-/// \frac{dy}{dx} = \frac{e^{-x}}{\left( 1 + e^{-x} \right)^2}
-/// $$
-pub fn lj_logistic(x: f64, ll: &mut f64) -> f64 {
-    let y = 1.0 / (1.0 + (-x).exp());
-
-    *ll += y.ln() + (1.0 - y).ln();
-
-    y
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -132,6 +109,7 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
+    use crate::functions::transforms::exponential::lj_exp;
 
     #[rstest]
     #[case(
@@ -152,21 +130,6 @@ mod tests {
 
         assert_eq!(y, target_y);
         assert_eq!(ll, x);
-    }
-
-    #[rstest]
-    #[case(0.0, 0.5, 0.25_f64.ln())]
-    #[case(
-        1.2345,
-        1.0 / (1.0 + (-1.2345_f64).exp()),
-        ((-1.2345_f64).exp() / (1.0 + (-1.2345_f64).exp()).powi(2)).ln()
-    )]
-    fn test_lj_logistic(#[case] x: f64, #[case] target_y: f64, #[case] target_ll: f64) {
-        let mut ll: f64 = 0.0;
-        let y = lj_logistic(x, &mut ll);
-
-        assert_eq!(y, target_y);
-        assert_eq!(ll, target_ll);
     }
 
     #[test]

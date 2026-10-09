@@ -28,12 +28,12 @@ use crate::functions::{
 /// # Returns
 /// * `y` - the parameter in the constrained space `0 <`
 pub fn softplus(x: f64) -> Result<f64, TransformError> {
-    let x = log_sum_exp(0.0, x).map_err(|source| TransformError::Transform {
+    let y = log_sum_exp(0.0, x).map_err(|source| TransformError::Transform {
         computation: "softplus",
         source,
     })?;
 
-    Ok(x)
+    Ok(y)
 }
 
 pub fn softplus_log_jacobian(x: f64) -> Result<(f64, f64), TransformError> {
