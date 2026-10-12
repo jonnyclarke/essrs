@@ -5,7 +5,7 @@ use crate::{chains::ChainBuffer, moves::move_handlers::differential_handler::Dif
 use crate::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
-    log_likelihood::science_archive::clarke2027::virac2_rho::{
+    log_likelihood::science_archive::clarke2027::virac2_rho_rc_rgbb_2peak::{
         Clarke2027LogLiViracV2Density, // Likelihood model for 1d Gaussian data with errors
     },
 };
