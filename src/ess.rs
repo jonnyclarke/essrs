@@ -8,6 +8,8 @@ use crate::{
     state::WalkerState,
 };
 
+use ndarray::ArrayView1;
+
 pub struct EnsembleSliceSampler<
     C: ChainBuffer,
     M: EnsembleMoveHandler,
@@ -75,6 +77,10 @@ impl<C: ChainBuffer, M: EnsembleMoveHandler, L: WrappedLogLikelihoodModel>
     pub fn display_parameter_summaries(&self) {
         self.chains
             .display_parameter_summaries(self.n_parameters as i32);
+    }
+
+    pub fn final_log_likelihood(&self) -> ArrayView1<'_, f64> {
+        self.state_i.get_ll_vector()
     }
 
     pub fn save_log_likelihood<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {

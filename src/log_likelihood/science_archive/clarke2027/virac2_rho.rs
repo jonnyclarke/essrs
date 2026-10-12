@@ -3,6 +3,7 @@
 
 use ndarray::{Array1, ArrayView1};
 
+use crate::functions::priors::{ln_prior_exponential, ln_prior_normal};
 use crate::log_likelihood::LogLikelihoodModel;
 use crate::functions::{
     numerical::{
@@ -46,14 +47,17 @@ impl Clarke2027LogLiViracV2Density {
 /// Parameters of this model:
 /// - 0: theta   :: weight between the exponential and gaussian mixture
 /// - 1: alpha   :: exponential scale height
-/// - 2: pi      :: weight of 1^th Gaussian
+/// - 2: pi      :: weight of primary Gaussian
 /// - 3: mu1     :: mean of Gaussian component 1 [Red Clump]
 /// - 4: mu2     :: mean of gaussian component 2 [Red Giant Branch Bump]
 /// - 5: sigma1  :: standard deviation of gaussian 1
 /// - 6: sigma2  :: standard deviation of gaussian 2
 /// - 7: d_mu    :: Delta central magnitude [RGBB - RC]
 /// - 8: f_sigma :: Ratio of RGBB to RC dispersion [constrained >0]
-/// - 9: w_rc    :: Weight of RC [RC_w + RGBB_w = 1] 
+/// - 9: w_rc    :: Weight of RC [RC_w + RGBB_w = 1]
+/// 
+/// Hyperparameters of the model
+/// - 10: tau    :: parameter controlling prior on pi
 impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
 
     fn columnar_transform_physical_to_internal(
@@ -81,6 +85,8 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
         apply_transform_column(softplus_inverse, &mut internal, 7)?;
         apply_transform_column(softplus_inverse, &mut internal, 8)?;
         apply_transform_column(logistic_inverse, &mut internal, 9)?;
+
+        apply_transform_column(softplus_inverse, &mut internal, 10)?;
         
 
         Ok(())
@@ -112,6 +118,8 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
         apply_transform_column(softplus, &mut physical, 8)?;
         apply_transform_column(logistic, &mut physical, 9)?;
 
+        apply_transform_column(softplus, &mut physical, 10)?;
+
         Ok(())
     }
 
@@ -140,6 +148,8 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
         softplus_log_jacobian_inplace(&mut physical[8], log_jacobian)?;
         logistic_log_jacobian_inplace(&mut physical[9], log_jacobian)?;
 
+        softplus_log_jacobian_inplace(&mut physical[10], log_jacobian)?;
+
         Ok(())
     }
 
@@ -163,12 +173,14 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
         let f_sigma = parameters[8];  // Ratio of RGBB / RC sigma
         let w_rc = parameters[9];     // Weight of RC [RC_w + RGBB_w = 1] 
 
+        // Hyper-Parameters
+        let tau = parameters[10];
+        let tau_sqr = tau.powi(2);
+
         let log_exp_int = -alpha.ln() + log_diff_exp(
             alpha * self.ks_max,
             alpha * self.ks_min
         )?;
-
-        let mut ll = 0.0;
 
         let ln_theta = theta.ln();
         let ln_1_sub_theta = (1.0 - theta).ln();
@@ -184,6 +196,17 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
 
         let f_sigma0 = f_sigma * sigma0;
         let f_sigma1 = f_sigma * sigma1;
+
+        let mut ll = 0.0;
+
+        // add priors
+        ln_prior_exponential(tau, 1.0, &mut ll);
+        ln_prior_normal(1.0 - pi, 0.0, tau_sqr, &mut ll);
+
+        // next priors on stability of the secondary components -- currently with testing numbers
+        ln_prior_normal((mu1 - mu0).ln(), -0.2, 0.3, &mut ll);
+        ln_prior_normal(sigma1.ln(), -1.2, 0.4, &mut ll);
+
 
         for ks in self.ks.iter() {
             let ll_g = log_sum_exp(
