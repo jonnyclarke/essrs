@@ -19,7 +19,7 @@ pub fn virac2_rho_rc<'py>(
     ks_data: PyReadonlyArray1<'py, f64>,
     w_rc: PyReadonlyArray1<'py, f64>,
     ks_min: f64,
-    ks_max: f64
+    ks_max: f64,
 ) -> PyResult<Bound<'py, PyArray3<f64>>> {
     let initial_conditions = initial_conditions.as_array().to_owned();
     let n_walkers = initial_conditions.nrows();

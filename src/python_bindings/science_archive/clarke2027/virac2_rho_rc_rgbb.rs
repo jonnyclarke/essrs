@@ -1,6 +1,5 @@
 use numpy::{PyArray1, PyArray3, PyReadonlyArray1, PyReadonlyArray2};
-use pyo3::prelude::*;
-use pyo3::types::PyTuple;
+use pyo3::{prelude::*, types::PyTuple};
 
 use crate::{chains::ChainBuffer, moves::move_handlers::differential_handler::DifferentialHandler};
 use crate::{
@@ -20,7 +19,7 @@ pub fn virac2_rho_rc_rgbb<'py>(
     ks_data: PyReadonlyArray1<'py, f64>,
     w_rc: PyReadonlyArray1<'py, f64>,
     ks_min: f64,
-    ks_max: f64
+    ks_max: f64,
 ) -> PyResult<Bound<'py, PyTuple>> {
     let initial_conditions = initial_conditions.as_array().to_owned();
     let n_walkers = initial_conditions.nrows();
@@ -33,15 +32,18 @@ pub fn virac2_rho_rc_rgbb<'py>(
     let move_handler = DifferentialHandler::new();
     let model = Clarke2027LogLiViracV2RcRgbb::new(d, w, ks_min, ks_max);
 
-    let mut ess =
-        EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, Clarke2027LogLiViracV2RcRgbb>::new(
-            max_n_steps,
-            n_walkers,
-            n_parameters,
-            chains,
-            move_handler,
-            model,
-        );
+    let mut ess = EnsembleSliceSampler::<
+        StaticBuffer,
+        DifferentialHandler,
+        Clarke2027LogLiViracV2RcRgbb,
+    >::new(
+        max_n_steps,
+        n_walkers,
+        n_parameters,
+        chains,
+        move_handler,
+        model,
+    );
 
     ess.initialise(initial_conditions.view()).unwrap(); // compute log-likelihood of initial positions
     ess.run_sampler(n_burn_in).unwrap(); // run sampler
@@ -52,5 +54,8 @@ pub fn virac2_rho_rc_rgbb<'py>(
     let py_chains = PyArray3::from_owned_array(py, chains);
     let py_ll_final = PyArray1::from_owned_array(py, ll_final);
 
-    Ok(PyTuple::new(py, [py_chains.into_any(), py_ll_final.into_any()])?)
+    Ok(PyTuple::new(
+        py,
+        [py_chains.into_any(), py_ll_final.into_any()],
+    )?)
 }
