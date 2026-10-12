@@ -1,7 +1,4 @@
-use crate::functions::{
-    // numerical::{log_diff_exp, log_sum_exp},
-    transforms::TransformError,
-};
+use crate::functions::transforms::TransformError;
 
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
 /// Function to apply logistic transform.

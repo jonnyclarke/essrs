@@ -73,6 +73,10 @@ pub trait LogLikelihoodModel: Send + Sync {
     }
 
     /// Returns the log-likelihood for a given set of parameters.
+    ///
+    /// Constraints:
+    /// - system will return an error if log-likelihood returns NaN or +INF
+    /// - system will interpret -INF as a hard boundary in phase space
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64>;
 }
 
@@ -154,7 +158,7 @@ pub trait WrappedLogLikelihoodModel: LogLikelihoodModel {
             });
         }
 
-        if ll_parameters.is_infinite() {
+        if ll_parameters.is_infinite() && ll_parameters.is_sign_positive() {
             return Err(LogLikelihoodError::LogLikelihoodIsInfinite {
                 params: physical.to_owned(),
             });
