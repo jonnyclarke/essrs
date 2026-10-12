@@ -1,45 +1,37 @@
 /// Log likelihood function for fitting VIRAC-2 density profiles with
 /// an exponential and gaussian mixture
-
 use ndarray::{Array1, ArrayView1};
 
-use crate::functions::priors::{ln_prior_exponential, ln_prior_normal};
-use crate::log_likelihood::LogLikelihoodModel;
-use crate::functions::{
-    numerical::{
-        log_diff_exp,
-        log_sum_exp
+use crate::{
+    functions::{
+        likelihood::log_normalised_gaussian,
+        numerical::{log_diff_exp, log_sum_exp},
+        priors::{ln_prior_exponential, ln_prior_normal},
+        transforms::{
+            apply_inplace_multi_column_transform, apply_transform_column,
+            logistic::{logistic, logistic_inverse, logistic_log_jacobian_inplace},
+            ordseq::{ordinal_sequencer, ordinal_sequencer_inverse},
+            softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
+        },
     },
-    likelihood::log_normalised_gaussian,
-    transforms::{
-        {apply_transform_column, apply_inplace_multi_column_transform},
-        logistic::{logistic_log_jacobian_inplace, logistic_inverse, logistic},
-        softplus::{softplus_log_jacobian_inplace, softplus_inverse, softplus},
-        ordseq::{ordinal_sequencer_inverse, ordinal_sequencer}
-    },
+    log_likelihood::LogLikelihoodModel,
 };
-
 
 pub struct Clarke2027LogLiViracV2Density {
     ks: Array1<f64>,
     // n: usize,
-
     ks_min: f64,
     ks_max: f64,
 }
 
 impl Clarke2027LogLiViracV2Density {
-    pub fn new(
-        ks: Array1<f64>,
-        ks_min: f64,
-        ks_max: f64
-    ) -> Self {
+    pub fn new(ks: Array1<f64>, ks_min: f64, ks_max: f64) -> Self {
         // let n = ks.len();
         Self {
             ks,
             // n,
             ks_min,
-            ks_max
+            ks_max,
         }
     }
 }
@@ -55,21 +47,19 @@ impl Clarke2027LogLiViracV2Density {
 /// - 7: d_mu    :: Delta central magnitude [RGBB - RC]
 /// - 8: f_sigma :: Ratio of RGBB to RC dispersion [constrained >0]
 /// - 9: w_rc    :: Weight of RC [RC_w + RGBB_w = 1]
-/// 
+///
 /// Hyperparameters of the model
 /// - 10: tau    :: parameter controlling prior on pi
 impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
-
     fn columnar_transform_physical_to_internal(
         &self,
         physical: ndarray::prelude::ArrayView2<f64>,
         mut internal: ndarray::prelude::ArrayViewMut2<f64>,
-    ) -> anyhow::Result<()>
-    {
+    ) -> anyhow::Result<()> {
         internal.assign(&physical);
 
         apply_transform_column(logistic_inverse, &mut internal, 0)?;
-        
+
         apply_transform_column(softplus_inverse, &mut internal, 1)?;
 
         apply_transform_column(logistic_inverse, &mut internal, 2)?;
@@ -87,7 +77,6 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
         apply_transform_column(logistic_inverse, &mut internal, 9)?;
 
         apply_transform_column(softplus_inverse, &mut internal, 10)?;
-        
 
         Ok(())
     }
@@ -96,12 +85,11 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
         &self,
         internal: ndarray::prelude::ArrayView2<f64>,
         mut physical: ndarray::prelude::ArrayViewMut2<f64>,
-    ) -> anyhow::Result<()>
-    {
+    ) -> anyhow::Result<()> {
         physical.assign(&internal);
 
         apply_transform_column(logistic, &mut physical, 0)?;
-        
+
         apply_transform_column(softplus, &mut physical, 1)?;
 
         apply_transform_column(logistic, &mut physical, 2)?;
@@ -128,8 +116,7 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
         log_jacobian: &mut f64,
         internal: ArrayView1<f64>,
         physical: &mut ndarray::prelude::ArrayViewMut1<f64>,
-    ) -> anyhow::Result<()>
-    {
+    ) -> anyhow::Result<()> {
         physical.assign(&internal);
 
         logistic_log_jacobian_inplace(&mut physical[0], log_jacobian)?;
@@ -153,11 +140,7 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
         Ok(())
     }
 
-    fn log_likelihood(
-            &self,
-            parameters: ArrayView1<f64>,
-        ) -> anyhow::Result<f64> {
-
+    fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let theta = parameters[0]; // fractional weight of exponential 
         let alpha = parameters[1]; // exponential scale height
         let pi = parameters[2]; // weight of gaussian 0
@@ -169,18 +152,15 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
         let sigma1 = parameters[6];
 
         // RC -- RGBB parameters
-        let d_mu = parameters[7];     // Delta mag [RGBB - RC]
-        let f_sigma = parameters[8];  // Ratio of RGBB / RC sigma
-        let w_rc = parameters[9];     // Weight of RC [RC_w + RGBB_w = 1] 
+        let d_mu = parameters[7]; // Delta mag [RGBB - RC]
+        let f_sigma = parameters[8]; // Ratio of RGBB / RC sigma
+        let w_rc = parameters[9]; // Weight of RC [RC_w + RGBB_w = 1] 
 
         // Hyper-Parameters
         let tau = parameters[10];
         let tau_sqr = tau.powi(2);
 
-        let log_exp_int = -alpha.ln() + log_diff_exp(
-            alpha * self.ks_max,
-            alpha * self.ks_min
-        )?;
+        let log_exp_int = -alpha.ln() + log_diff_exp(alpha * self.ks_max, alpha * self.ks_min)?;
 
         let ln_theta = theta.ln();
         let ln_1_sub_theta = (1.0 - theta).ln();
@@ -207,22 +187,23 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
         ln_prior_normal((mu1 - mu0).ln(), -0.2, 0.3, &mut ll);
         ln_prior_normal(sigma1.ln(), -1.2, 0.4, &mut ll);
 
-
         for ks in self.ks.iter() {
             let ll_g = log_sum_exp(
-                ln_pi + log_sum_exp(
-                    ln_w_rc + log_normalised_gaussian(*ks, mu0, sigma0),
-                    ln_1_sub_w_rc + log_normalised_gaussian(*ks, mu0_dmu, f_sigma0)
-                )?,
-                ln_1_sub_pi + log_sum_exp(
-                    ln_w_rc + log_normalised_gaussian(*ks, mu1, sigma1),
-                    ln_1_sub_w_rc + log_normalised_gaussian(*ks, mu1_dmu, f_sigma1)
-                )?
+                ln_pi
+                    + log_sum_exp(
+                        ln_w_rc + log_normalised_gaussian(*ks, mu0, sigma0),
+                        ln_1_sub_w_rc + log_normalised_gaussian(*ks, mu0_dmu, f_sigma0),
+                    )?,
+                ln_1_sub_pi
+                    + log_sum_exp(
+                        ln_w_rc + log_normalised_gaussian(*ks, mu1, sigma1),
+                        ln_1_sub_w_rc + log_normalised_gaussian(*ks, mu1_dmu, f_sigma1),
+                    )?,
             )?;
 
             let ll_mix = log_sum_exp(
                 ln_theta + ll_g,
-                ln_1_sub_theta + (alpha * *ks - log_exp_int)
+                ln_1_sub_theta + (alpha * *ks - log_exp_int),
             )?;
 
             ll += ll_mix
@@ -255,4 +236,3 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
         Ok(ll)
     }
 }
-

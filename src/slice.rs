@@ -63,7 +63,10 @@ pub fn step_out(
 
     let mut ll_l = model
         .wrapped_log_likelihood(internal.view(), physical)
-        .map_err(|source| SliceSamplerError::StepOutLeftError { source, parameters: physical.to_owned() })?;
+        .map_err(|source| SliceSamplerError::StepOutLeftError {
+            source,
+            parameters: physical.to_owned(),
+        })?;
 
     let mut il: usize = 1;
 
@@ -79,7 +82,10 @@ pub fn step_out(
 
         ll_l = model
             .wrapped_log_likelihood(internal.view(), physical)
-            .map_err(|source| SliceSamplerError::StepOutLeftError { source, parameters: physical.to_owned() })?;
+            .map_err(|source| SliceSamplerError::StepOutLeftError {
+                source,
+                parameters: physical.to_owned(),
+            })?;
         il += 1;
     }
 

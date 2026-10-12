@@ -1,33 +1,23 @@
 /// Log Likelihood function to compute the join distribution
 /// of the background RGBC component and the RC+B component
+use ndarray::{Array1, Array2, ArrayView1, s};
 
-use ndarray::{
-    Array1, ArrayView1,
-    Array2,
-    s
-};
-
-use crate::functions::transforms::logistic::{logistic_inverse, logistic_log_jacobian_inplace};
-use crate::log_likelihood::LogLikelihoodModel;
 use crate::functions::{
-    likelihood::{
-        log_normalised_gaussian_s2
-    },  // version where sigma is passed already squared
-    priors::{
-        ln_prior_exponential,
-        ln_prior_normal,
-    },
+    likelihood::log_normalised_gaussian_s2, // version where sigma is passed already squared
+    priors::{ln_prior_exponential, ln_prior_normal},
 };
-use crate::functions::transforms::apply_transform_column;
-use crate::functions::transforms::softplus::softplus_inverse;
-use crate::functions::transforms::apply_inplace_multi_column_transform;
-use crate::functions::numerical::log_sum_exp;
-use crate::functions::transforms::ordseq::ordinal_sequencer_inverse;
-use crate::functions::transforms::softplus::softplus;
-use crate::functions::transforms::logistic::logistic;
-use crate::functions::transforms::ordseq::ordinal_sequencer;
-use crate::functions::transforms::softplus::softplus_log_jacobian_inplace;
-
+use crate::{
+    functions::{
+        numerical::log_sum_exp,
+        transforms::{
+            apply_inplace_multi_column_transform, apply_transform_column,
+            logistic::{logistic, logistic_inverse, logistic_log_jacobian_inplace},
+            ordseq::{ordinal_sequencer, ordinal_sequencer_inverse},
+            softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
+        },
+    },
+    log_likelihood::LogLikelihoodModel,
+};
 
 pub struct C2027LlViracV2ProperMotionRcRgbb {
     b_coeffs: Array2<f64>,
@@ -35,7 +25,7 @@ pub struct C2027LlViracV2ProperMotionRcRgbb {
     pmle2: Array1<f64>,
     ln_theta_rc: Array1<f64>,
     ln_one_sub_theta_rc: Array1<f64>,
-    n_nodes: usize
+    n_nodes: usize,
 }
 
 impl C2027LlViracV2ProperMotionRcRgbb {
@@ -45,7 +35,6 @@ impl C2027LlViracV2ProperMotionRcRgbb {
         pmle: Array1<f64>,
         theta_rc: Array1<f64>,
     ) -> Self {
-
         let n_nodes = b_coeffs.shape()[1];
 
         assert!(pml.shape()[0] == pmle.shape()[0]);
@@ -59,23 +48,21 @@ impl C2027LlViracV2ProperMotionRcRgbb {
             pmle2: pmle.iter().map(|x| x.powi(2)).collect(),
             ln_theta_rc,
             ln_one_sub_theta_rc,
-            n_nodes
+            n_nodes,
         }
     }
 }
 
 impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
-
     fn columnar_transform_physical_to_internal(
         &self,
         physical: ndarray::prelude::ArrayView2<f64>,
         mut internal: ndarray::prelude::ArrayViewMut2<f64>,
-    ) -> anyhow::Result<()>
-    {
+    ) -> anyhow::Result<()> {
         internal.assign(&physical);
 
         // the sigma nodes
-        for k in self.n_nodes..2*self.n_nodes {
+        for k in self.n_nodes..2 * self.n_nodes {
             apply_transform_column(softplus_inverse, &mut internal, k)?;
         }
 
@@ -90,14 +77,12 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
             ordinal_sequencer_inverse,
             &mut internal,
             i + 3,
-            i + 4
+            i + 4,
         )?;
         apply_transform_column(softplus_inverse, &mut internal, i + 4)?;
 
         apply_transform_column(softplus_inverse, &mut internal, i + 5)?;
         apply_transform_column(softplus_inverse, &mut internal, i + 6)?;
-
-
 
         Ok(())
     }
@@ -106,12 +91,11 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
         &self,
         internal: ndarray::prelude::ArrayView2<f64>,
         mut physical: ndarray::prelude::ArrayViewMut2<f64>,
-    ) -> anyhow::Result<()>
-    {
+    ) -> anyhow::Result<()> {
         physical.assign(&internal);
 
         // the sigma nodes
-        for k in self.n_nodes..2*self.n_nodes {
+        for k in self.n_nodes..2 * self.n_nodes {
             apply_transform_column(softplus, &mut physical, k)?;
         }
 
@@ -123,17 +107,11 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
         apply_transform_column(logistic, &mut physical, i + 2)?;
 
         apply_transform_column(softplus, &mut physical, i + 4)?;
-        apply_inplace_multi_column_transform(
-            ordinal_sequencer,
-            &mut physical,
-            i + 3,
-            i + 4
-        )?;
+        apply_inplace_multi_column_transform(ordinal_sequencer, &mut physical, i + 3, i + 4)?;
 
         apply_transform_column(softplus, &mut physical, i + 5)?;
         apply_transform_column(softplus, &mut physical, i + 6)?;
 
-        
         Ok(())
     }
 
@@ -142,12 +120,11 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
         log_jacobian: &mut f64,
         internal: ArrayView1<f64>,
         physical: &mut ndarray::prelude::ArrayViewMut1<f64>,
-    ) -> anyhow::Result<()>
-    {
+    ) -> anyhow::Result<()> {
         physical.assign(&internal);
 
         // the sigma nodes
-        for k in self.n_nodes..2*self.n_nodes {
+        for k in self.n_nodes..2 * self.n_nodes {
             softplus_log_jacobian_inplace(&mut physical[k], log_jacobian)?;
         }
 
@@ -160,99 +137,90 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
 
         softplus_log_jacobian_inplace(&mut physical[i + 4], log_jacobian)?;
         ordinal_sequencer(physical[i + 3], &mut physical[i + 4])?;
-        
+
         softplus_log_jacobian_inplace(&mut physical[i + 5], log_jacobian)?;
         softplus_log_jacobian_inplace(&mut physical[i + 6], log_jacobian)?;
 
         Ok(())
     }
 
-    fn log_likelihood(
-            &self,
-            parameters: ArrayView1<f64>,
-        ) -> anyhow::Result<f64> {
+    fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
+        let mu_nodes = parameters.slice(s![0 * self.n_nodes..1 * self.n_nodes]);
+        let sig_nodes = parameters.slice(s![1 * self.n_nodes..2 * self.n_nodes]);
 
-            let mu_nodes = parameters.slice(s![0*self.n_nodes..1*self.n_nodes]);
-            let sig_nodes = parameters.slice(s![1*self.n_nodes..2*self.n_nodes]);
+        let i = 2 * self.n_nodes;
+        let tau_mu = parameters[i]; // hierarchical priors -- mu smoothing
+        let tau_sigma = parameters[i + 1]; // hierarchical priors -- sigma smoothing
 
-            let i = 2 * self.n_nodes;
-            let tau_mu = parameters[i];         // hierarchical priors -- mu smoothing
-            let tau_sigma = parameters[i + 1];  // hierarchical priors -- sigma smoothing
+        // parameters of the background gaussian mixture model
+        let phi_rgbc = parameters[i + 2];
+        let mu0_rgbc = parameters[i + 3];
+        let mu1_rgbc = parameters[i + 4];
 
-            // parameters of the background gaussian mixture model
-            let phi_rgbc = parameters[i + 2];
-            let mu0_rgbc = parameters[i + 3];
-            let mu1_rgbc = parameters[i + 4];
+        // this is already squared for adding in quadrature
+        let sigma0_rgbc = parameters[i + 5].powi(2);
+        let sigma1_rgbc = parameters[i + 6].powi(2);
 
-            // this is already squared for adding in quadrature
-            let sigma0_rgbc = parameters[i + 5].powi(2);
-            let sigma1_rgbc = parameters[i + 6].powi(2);
+        let ln_phi_rgbc = phi_rgbc.ln();
+        let ln_one_sub_phi_rgbc = (1.0 - phi_rgbc).ln();
 
-            let ln_phi_rgbc = phi_rgbc.ln();
-            let ln_one_sub_phi_rgbc = (1.0 - phi_rgbc).ln();
+        let mut ll = 0.0;
 
-            let mut ll = 0.0;
+        // ensure that the hyper-parameters are drawn from the exponential distribution
+        ln_prior_exponential(tau_mu, 1.0, &mut ll);
+        ln_prior_exponential(tau_sigma, 1.0, &mut ll);
 
-            // ensure that the hyper-parameters are drawn from the exponential distribution
-            ln_prior_exponential(tau_mu, 1.0, &mut ll);
-            ln_prior_exponential(tau_sigma, 1.0, &mut ll);
+        // apply a prior on the smoothing node values
+        for k in 2..self.n_nodes {
+            ln_prior_normal(
+                mu_nodes[k] - 2.0 * mu_nodes[k - 1] + mu_nodes[k - 2],
+                0.0,
+                tau_mu,
+                &mut ll,
+            );
+            ln_prior_normal(
+                sig_nodes[k] - 2.0 * sig_nodes[k - 1] + sig_nodes[k - 2],
+                0.0,
+                tau_sigma,
+                &mut ll,
+            );
+        }
 
-            // apply a prior on the smoothing node values
-            for k in 2..self.n_nodes {
-                ln_prior_normal(
-                    mu_nodes[k] - 2.0 * mu_nodes[k-1] + mu_nodes[k-2],
-                    0.0,
-                    tau_mu,
-                    &mut ll
-                );
-                ln_prior_normal(
-                    sig_nodes[k] - 2.0 * sig_nodes[k-1] + sig_nodes[k-2],
-                    0.0,
-                    tau_sigma,
-                    &mut ll
-                );
+        for (i, (x, e2)) in self.pml.iter().zip(self.pmle2.iter()).enumerate() {
+            let pred_mu = self
+                .b_coeffs
+                .row(i)
+                .iter()
+                .zip(mu_nodes.iter())
+                .map(|(&b, &n)| b * n)
+                .sum::<f64>();
+
+            let pred_sigma = self
+                .b_coeffs
+                .row(i)
+                .iter()
+                .zip(sig_nodes.iter())
+                .map(|(&b, &n)| b * n)
+                .sum::<f64>();
+
+            if pred_sigma <= 0.0 {
+                return Ok(f64::NEG_INFINITY);
             }
 
-            for (i, (x, e2)) in self.pml.iter().zip(self.pmle2.iter()).enumerate() {
-
-                let pred_mu = self.b_coeffs.row(i)
-                    .iter()
-                    .zip(
-                        mu_nodes
-                        .iter()
-                    )
-                    .map(|(&b, &n)| b * n)
-                    .sum::<f64>();
-
-                let pred_sigma = self.b_coeffs.row(i)
-                    .iter()
-                    .zip(
-                        sig_nodes
-                        .iter()
-                    )
-                    .map(|(&b, &n)| b * n)
-                    .sum::<f64>();
-
-                if pred_sigma <= 0.0 {
-                    return Ok(f64::NEG_INFINITY)
-                }
-
-                ll += log_sum_exp(
-                    // Red clump component
-                    self.ln_theta_rc[i] + log_normalised_gaussian_s2(
-                        *x,
-                        pred_mu,
-                        *e2 + pred_sigma.powi(2)
-                    ),
-                    // RGBC component split into two possible sub-gaussians
-                    self.ln_one_sub_theta_rc[i] + log_sum_exp(
+            ll += log_sum_exp(
+                // Red clump component
+                self.ln_theta_rc[i]
+                    + log_normalised_gaussian_s2(*x, pred_mu, *e2 + pred_sigma.powi(2)),
+                // RGBC component split into two possible sub-gaussians
+                self.ln_one_sub_theta_rc[i]
+                    + log_sum_exp(
                         ln_phi_rgbc + log_normalised_gaussian_s2(*x, mu0_rgbc, e2 + sigma0_rgbc),
-                        ln_one_sub_phi_rgbc + log_normalised_gaussian_s2(*x, mu1_rgbc, e2 + sigma1_rgbc)
-                    )?
-                )?
-            }
+                        ln_one_sub_phi_rgbc
+                            + log_normalised_gaussian_s2(*x, mu1_rgbc, e2 + sigma1_rgbc),
+                    )?,
+            )?
+        }
 
-            Ok(ll)
+        Ok(ll)
     }
 }
-

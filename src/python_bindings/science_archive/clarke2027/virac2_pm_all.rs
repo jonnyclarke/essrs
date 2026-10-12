@@ -1,6 +1,5 @@
 use numpy::{PyArray1, PyArray3, PyReadonlyArray1, PyReadonlyArray2};
-use pyo3::prelude::*;
-use pyo3::types::PyTuple;
+use pyo3::{prelude::*, types::PyTuple};
 
 use crate::{chains::ChainBuffer, moves::move_handlers::differential_handler::DifferentialHandler};
 use crate::{
@@ -52,5 +51,8 @@ pub fn virac2_pm_all<'py>(
     let py_chains = PyArray3::from_owned_array(py, chains);
     let py_ll_final = PyArray1::from_owned_array(py, ll_final);
 
-    Ok(PyTuple::new(py, [py_chains.into_any(), py_ll_final.into_any()])?)
+    Ok(PyTuple::new(
+        py,
+        [py_chains.into_any(), py_ll_final.into_any()],
+    )?)
 }

@@ -18,7 +18,7 @@ pub fn virac2_rho<'py>(
     initial_conditions: PyReadonlyArray2<'py, f64>,
     ks_data: PyReadonlyArray1<'py, f64>,
     ks_min: f64,
-    ks_max: f64
+    ks_max: f64,
 ) -> PyResult<Bound<'py, PyArray3<f64>>> {
     let initial_conditions = initial_conditions.as_array().to_owned();
     let n_walkers = initial_conditions.nrows();
@@ -30,15 +30,18 @@ pub fn virac2_rho<'py>(
     let move_handler = DifferentialHandler::new();
     let model = Clarke2027LogLiViracV2Density::new(d, ks_min, ks_max);
 
-    let mut ess =
-        EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, Clarke2027LogLiViracV2Density>::new(
-            max_n_steps,
-            n_walkers,
-            n_parameters,
-            chains,
-            move_handler,
-            model,
-        );
+    let mut ess = EnsembleSliceSampler::<
+        StaticBuffer,
+        DifferentialHandler,
+        Clarke2027LogLiViracV2Density,
+    >::new(
+        max_n_steps,
+        n_walkers,
+        n_parameters,
+        chains,
+        move_handler,
+        model,
+    );
 
     ess.initialise(initial_conditions.view()).unwrap(); // compute log-likelihood of initial positions
     ess.run_sampler(n_burn_in).unwrap(); // run sampler

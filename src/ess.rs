@@ -3,12 +3,12 @@ mod new;
 
 use std::path::Path;
 
+use ndarray::ArrayView1;
+
 use crate::{
     chains::ChainBuffer, log_likelihood::WrappedLogLikelihoodModel, moves::EnsembleMoveHandler,
     state::WalkerState,
 };
-
-use ndarray::ArrayView1;
 
 pub struct EnsembleSliceSampler<
     C: ChainBuffer,
