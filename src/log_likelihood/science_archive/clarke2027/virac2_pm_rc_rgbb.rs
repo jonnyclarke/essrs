@@ -139,8 +139,8 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
     }
 
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
-        let mu_nodes = parameters.slice(s![0 * self.n_nodes..1 * self.n_nodes]);
-        let sig_nodes = parameters.slice(s![1 * self.n_nodes..2 * self.n_nodes]);
+        let mu_nodes = parameters.slice(s![0..self.n_nodes]);
+        let sig_nodes = parameters.slice(s![self.n_nodes..2 * self.n_nodes]);
 
         let i = 2 * self.n_nodes;
         // let tau_mu = parameters[i]; // hierarchical priors -- mu smoothing

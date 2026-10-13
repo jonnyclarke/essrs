@@ -11,6 +11,7 @@ use crate::{
 };
 
 #[pyfunction]
+#[allow(clippy::too_many_arguments)]
 pub fn virac2_rho_rc<'py>(
     py: Python<'py>,
     max_n_steps: usize,
