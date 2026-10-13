@@ -7,8 +7,7 @@ use crate::functions::{
     transforms::apply_transform_column,
     transforms::softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
 };
-use crate::functions::priors::ln_prior_normal;
-use crate::log_likelihood::LogLikelihoodModel;
+use crate::{functions::priors::ln_prior_normal, log_likelihood::LogLikelihoodModel};
 
 pub struct C2027LlViracV2ProperMotion {
     b_coeffs: Array2<f64>,
@@ -82,14 +81,13 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotion {
     }
 
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
-
         let mu_nodes = parameters.slice(s![0..self.n_nodes]);
         let sig_nodes = parameters.slice(s![self.n_nodes..2 * self.n_nodes]);
 
         let mut ll = 0.0;
 
         // this is to try and prevent node explosion...
-        for i in 0..self.n_nodes{
+        for i in 0..self.n_nodes {
             ln_prior_normal(mu_nodes[i], -5.0, 5.0, &mut ll);
             ln_prior_normal(sig_nodes[i], 3.0, 5.0, &mut ll);
         }

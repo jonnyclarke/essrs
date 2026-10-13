@@ -161,7 +161,7 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
         let mut ll = 0.0;
 
         // this is to try and prevent node explosion...
-        for i in 0..self.n_nodes{
+        for i in 0..self.n_nodes {
             ln_prior_normal(mu_nodes[i], -5.0, 5.0, &mut ll);
             ln_prior_normal(sig_nodes[i], 3.0, 5.0, &mut ll);
         }
