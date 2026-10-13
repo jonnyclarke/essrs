@@ -5,13 +5,13 @@ use crate::{chains::ChainBuffer, moves::move_handlers::differential_handler::Dif
 use crate::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
-    log_likelihood::science_archive::clarke2027::virac2_pm_all::{
+    log_likelihood::science_archive::clarke2027::virac2_pm_rgb::{
         C2027LlViracV2ProperMotion, // Likelihood model for 1d Gaussian data with errors
     },
 };
 
 #[pyfunction]
-pub fn virac2_pm_all<'py>(
+pub fn virac2_pm_rgb<'py>(
     py: Python<'py>,
     max_n_steps: usize,
     n_burn_in: usize,

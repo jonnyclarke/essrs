@@ -4,7 +4,6 @@ use ndarray::{Array1, Array2, ArrayView1, s};
 
 use crate::functions::{
     likelihood::log_normalised_gaussian_s2, // version where sigma is passed already squared
-    priors::{ln_prior_exponential, ln_prior_normal},
     transforms::apply_transform_column,
     transforms::softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
 };
@@ -47,11 +46,6 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotion {
             apply_transform_column(softplus_inverse, &mut internal, k)?;
         }
 
-        let i = 2 * self.n_nodes;
-        // hierarchical smoothing hyper-parameters
-        apply_transform_column(softplus_inverse, &mut internal, i)?;
-        apply_transform_column(softplus_inverse, &mut internal, i + 1)?;
-
         Ok(())
     }
 
@@ -66,10 +60,6 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotion {
         for k in self.n_nodes..2 * self.n_nodes {
             apply_transform_column(softplus, &mut physical, k)?;
         }
-
-        // hierarchical smoothing hyper-parameters
-        apply_transform_column(softplus, &mut physical, 2 * self.n_nodes)?;
-        apply_transform_column(softplus, &mut physical, 2 * self.n_nodes + 1)?;
 
         Ok(())
     }
@@ -87,10 +77,6 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotion {
             softplus_log_jacobian_inplace(&mut physical[k], log_jacobian)?;
         }
 
-        // hierarchical smoothing hyper-parameters
-        softplus_log_jacobian_inplace(&mut physical[2 * self.n_nodes], log_jacobian)?;
-        softplus_log_jacobian_inplace(&mut physical[2 * self.n_nodes + 1], log_jacobian)?;
-
         Ok(())
     }
 
@@ -98,30 +84,7 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotion {
         let mu_nodes = parameters.slice(s![0 * self.n_nodes..1 * self.n_nodes]);
         let sig_nodes = parameters.slice(s![1 * self.n_nodes..2 * self.n_nodes]);
 
-        let tau_mu = parameters[self.n_nodes * 2]; // hierarchical priors -- mu smoothing
-        let tau_sigma = parameters[self.n_nodes * 2 + 1]; // hierarchical priors -- sigma smoothing
-
         let mut ll = 0.0;
-
-        // ensure that the hyper-parameters are drawn from the exponential distribution
-        ln_prior_exponential(tau_mu, 1.0, &mut ll);
-        ln_prior_exponential(tau_sigma, 1.0, &mut ll);
-
-        // apply a prior on the smoothing node values
-        for k in 2..self.n_nodes {
-            ln_prior_normal(
-                mu_nodes[k] - 2.0 * mu_nodes[k - 1] + mu_nodes[k - 2],
-                0.0,
-                tau_mu,
-                &mut ll,
-            );
-            ln_prior_normal(
-                sig_nodes[k] - 2.0 * sig_nodes[k - 1] + sig_nodes[k - 2],
-                0.0,
-                tau_sigma,
-                &mut ll,
-            );
-        }
 
         for (i, (x, e2)) in self.pml.iter().zip(self.pmle2.iter()).enumerate() {
             let pred_mu = self
