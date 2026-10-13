@@ -51,8 +51,10 @@ pub fn virac2_pm_rgb<'py>(
     let py_chains = PyArray3::from_owned_array(py, chains);
     let py_ll_final = PyArray1::from_owned_array(py, ll_final);
 
-    Ok(PyTuple::new(
+    let tup = PyTuple::new(
         py,
         [py_chains.into_any(), py_ll_final.into_any()],
-    )?)
+    )?;
+
+    Ok(tup)
 }
