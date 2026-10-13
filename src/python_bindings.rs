@@ -10,12 +10,12 @@ use crate::python_bindings::{
     normal_1d::normal_1d_deconv::normal_1d_deconv,
     normal_2d::normal_2d_gmm_deconv::normal_2d_gmm_deconv,
     // SCIENTIFIC FUNCTIONS
-    science_archive::clarke2027::virac2_pm_rgb::virac2_pm_rgb,
     science_archive::clarke2027::virac2_pm_rc_rgbb::virac2_pm_rc_rgbb,
-    science_archive::clarke2027::virac2_rho_rc_rgbb_2peak::virac2_rho_rc_rgbb_2peak,
+    science_archive::clarke2027::virac2_pm_rgb::virac2_pm_rgb,
     // Clarke 2027
     science_archive::clarke2027::virac2_rho_rc::virac2_rho_rc,
     science_archive::clarke2027::virac2_rho_rc_rgbb::virac2_rho_rc_rgbb,
+    science_archive::clarke2027::virac2_rho_rc_rgbb_2peak::virac2_rho_rc_rgbb_2peak,
 };
 
 #[pymodule]

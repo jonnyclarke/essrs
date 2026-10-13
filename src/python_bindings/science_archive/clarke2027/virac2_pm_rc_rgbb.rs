@@ -35,15 +35,18 @@ pub fn virac2_pm_rc_rgbb<'py>(
     let move_handler = DifferentialHandler::new();
     let model = C2027LlViracV2ProperMotionRcRgbb::new(b_coeffs, pml, pmle, theta_rc);
 
-    let mut ess =
-        EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, C2027LlViracV2ProperMotionRcRgbb>::new(
-            max_n_steps,
-            n_walkers,
-            n_parameters,
-            chains,
-            move_handler,
-            model,
-        );
+    let mut ess = EnsembleSliceSampler::<
+        StaticBuffer,
+        DifferentialHandler,
+        C2027LlViracV2ProperMotionRcRgbb,
+    >::new(
+        max_n_steps,
+        n_walkers,
+        n_parameters,
+        chains,
+        move_handler,
+        model,
+    );
 
     ess.initialise(initial_conditions.view()).unwrap(); // compute log-likelihood of initial positions
     ess.run_sampler(n_burn_in).unwrap(); // run sampler
@@ -54,10 +57,7 @@ pub fn virac2_pm_rc_rgbb<'py>(
     let py_chains = PyArray3::from_owned_array(py, chains);
     let py_ll_final = PyArray1::from_owned_array(py, ll_final);
 
-    let tup = PyTuple::new(
-        py,
-        [py_chains.into_any(), py_ll_final.into_any()],
-    )?;
-    
+    let tup = PyTuple::new(py, [py_chains.into_any(), py_ll_final.into_any()])?;
+
     Ok(tup)
 }
