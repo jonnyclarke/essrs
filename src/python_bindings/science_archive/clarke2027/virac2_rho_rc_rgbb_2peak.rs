@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[pyfunction]
-pub fn virac2_rho<'py>(
+pub fn virac2_rho_rc_rgbb_2peak<'py>(
     py: Python<'py>,
     max_n_steps: usize,
     n_burn_in: usize,
