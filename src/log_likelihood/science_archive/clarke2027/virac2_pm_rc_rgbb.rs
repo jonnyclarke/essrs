@@ -4,7 +4,7 @@ use ndarray::{Array1, Array2, ArrayView1, s};
 
 use crate::functions::{
     likelihood::log_normalised_gaussian_s2, // version where sigma is passed already squared
-    priors::{ln_prior_exponential, ln_prior_normal},
+    priors::ln_prior_normal,
 };
 use crate::{
     functions::{
@@ -67,22 +67,20 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
         }
 
         let i = 2 * self.n_nodes;
-        // hierarchical smoothing hyper-parameters
-        apply_transform_column(softplus_inverse, &mut internal, i)?;
-        apply_transform_column(softplus_inverse, &mut internal, i + 1)?;
 
-        apply_transform_column(logistic_inverse, &mut internal, i + 2)?;
+        // Gaussian Mixture Background
+        apply_transform_column(logistic_inverse, &mut internal, i)?;
 
         apply_inplace_multi_column_transform(
             ordinal_sequencer_inverse,
             &mut internal,
-            i + 3,
-            i + 4,
+            i + 1,
+            i + 2,
         )?;
-        apply_transform_column(softplus_inverse, &mut internal, i + 4)?;
+        apply_transform_column(softplus_inverse, &mut internal, i + 2)?;
 
-        apply_transform_column(softplus_inverse, &mut internal, i + 5)?;
-        apply_transform_column(softplus_inverse, &mut internal, i + 6)?;
+        apply_transform_column(softplus_inverse, &mut internal, i + 3)?;
+        apply_transform_column(softplus_inverse, &mut internal, i + 4)?;
 
         Ok(())
     }
@@ -100,17 +98,15 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
         }
 
         let i = 2 * self.n_nodes;
-        // hierarchical smoothing hyper-parameters
-        apply_transform_column(softplus, &mut physical, i)?;
-        apply_transform_column(softplus, &mut physical, i + 1)?;
 
-        apply_transform_column(logistic, &mut physical, i + 2)?;
+        // Gaussian Mixture Background
+        apply_transform_column(logistic, &mut physical, i)?;
 
+        apply_transform_column(softplus, &mut physical, i + 2)?;
+        apply_inplace_multi_column_transform(ordinal_sequencer, &mut physical, i + 1, i + 2)?;
+
+        apply_transform_column(softplus, &mut physical, i + 3)?;
         apply_transform_column(softplus, &mut physical, i + 4)?;
-        apply_inplace_multi_column_transform(ordinal_sequencer, &mut physical, i + 3, i + 4)?;
-
-        apply_transform_column(softplus, &mut physical, i + 5)?;
-        apply_transform_column(softplus, &mut physical, i + 6)?;
 
         Ok(())
     }
@@ -129,17 +125,15 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
         }
 
         let i = 2 * self.n_nodes;
-        // hierarchical smoothing hyper-parameters
-        softplus_log_jacobian_inplace(&mut physical[i], log_jacobian)?;
-        softplus_log_jacobian_inplace(&mut physical[i + 1], log_jacobian)?;
 
-        logistic_log_jacobian_inplace(&mut physical[i + 2], log_jacobian)?;
+        // Gaussian Mixture Background
+        logistic_log_jacobian_inplace(&mut physical[i], log_jacobian)?;
 
+        softplus_log_jacobian_inplace(&mut physical[i + 2], log_jacobian)?;
+        ordinal_sequencer(physical[i + 1], &mut physical[i + 2])?;
+
+        softplus_log_jacobian_inplace(&mut physical[i + 3], log_jacobian)?;
         softplus_log_jacobian_inplace(&mut physical[i + 4], log_jacobian)?;
-        ordinal_sequencer(physical[i + 3], &mut physical[i + 4])?;
-
-        softplus_log_jacobian_inplace(&mut physical[i + 5], log_jacobian)?;
-        softplus_log_jacobian_inplace(&mut physical[i + 6], log_jacobian)?;
 
         Ok(())
     }
@@ -149,41 +143,27 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
         let sig_nodes = parameters.slice(s![1 * self.n_nodes..2 * self.n_nodes]);
 
         let i = 2 * self.n_nodes;
-        let tau_mu = parameters[i]; // hierarchical priors -- mu smoothing
-        let tau_sigma = parameters[i + 1]; // hierarchical priors -- sigma smoothing
+        // let tau_mu = parameters[i]; // hierarchical priors -- mu smoothing
+        // let tau_sigma = parameters[i + 1]; // hierarchical priors -- sigma smoothing
 
         // parameters of the background gaussian mixture model
-        let phi_rgbc = parameters[i + 2];
-        let mu0_rgbc = parameters[i + 3];
-        let mu1_rgbc = parameters[i + 4];
+        let phi_rgbc = parameters[i];
+        let mu0_rgbc = parameters[i + 1];
+        let mu1_rgbc = parameters[i + 2];
 
         // this is already squared for adding in quadrature
-        let sigma0_rgbc = parameters[i + 5].powi(2);
-        let sigma1_rgbc = parameters[i + 6].powi(2);
+        let sigma0_rgbc = parameters[i + 3].powi(2);
+        let sigma1_rgbc = parameters[i + 4].powi(2);
 
         let ln_phi_rgbc = phi_rgbc.ln();
         let ln_one_sub_phi_rgbc = (1.0 - phi_rgbc).ln();
 
         let mut ll = 0.0;
 
-        // ensure that the hyper-parameters are drawn from the exponential distribution
-        ln_prior_exponential(tau_mu, 1.0, &mut ll);
-        ln_prior_exponential(tau_sigma, 1.0, &mut ll);
-
-        // apply a prior on the smoothing node values
-        for k in 2..self.n_nodes {
-            ln_prior_normal(
-                mu_nodes[k] - 2.0 * mu_nodes[k - 1] + mu_nodes[k - 2],
-                0.0,
-                tau_mu,
-                &mut ll,
-            );
-            ln_prior_normal(
-                sig_nodes[k] - 2.0 * sig_nodes[k - 1] + sig_nodes[k - 2],
-                0.0,
-                tau_sigma,
-                &mut ll,
-            );
+        // this is to try and prevent node explosion...
+        for i in 0..self.n_nodes{
+            ln_prior_normal(mu_nodes[i], -5.0, 5.0, &mut ll);
+            ln_prior_normal(sig_nodes[i], 3.0, 5.0, &mut ll);
         }
 
         for (i, (x, e2)) in self.pml.iter().zip(self.pmle2.iter()).enumerate() {
