@@ -1,5 +1,5 @@
-use numpy::{PyArray3, PyReadonlyArray1, PyReadonlyArray2};
-use pyo3::prelude::*;
+use numpy::{PyArray1, PyArray3, PyReadonlyArray1, PyReadonlyArray2};
+use pyo3::{prelude::*, types::PyTuple};
 
 use crate::{chains::ChainBuffer, moves::move_handlers::differential_handler::DifferentialHandler};
 use crate::{
@@ -21,7 +21,7 @@ pub fn virac2_rho_rc<'py>(
     w_rc: PyReadonlyArray1<'py, f64>,
     ks_min: f64,
     ks_max: f64,
-) -> PyResult<Bound<'py, PyArray3<f64>>> {
+) -> PyResult<Bound<'py, PyTuple>> {
     let initial_conditions = initial_conditions.as_array().to_owned();
     let n_walkers = initial_conditions.nrows();
     let n_parameters: usize = initial_conditions.ncols();
@@ -46,7 +46,13 @@ pub fn virac2_rho_rc<'py>(
     ess.initialise(initial_conditions.view()).unwrap(); // compute log-likelihood of initial positions
     ess.run_sampler(n_burn_in).unwrap(); // run sampler
 
-    let result = ess.chains.extract_state();
+    let chains = ess.chains.extract_state();
+    let ll_final = ess.final_log_likelihood().to_owned();
 
-    Ok(PyArray3::from_owned_array(py, result))
+    let py_chains = PyArray3::from_owned_array(py, chains);
+    let py_ll_final = PyArray1::from_owned_array(py, ll_final);
+
+    let tup = PyTuple::new(py, [py_chains.into_any(), py_ll_final.into_any()])?;
+
+    Ok(tup)
 }
