@@ -11,26 +11,29 @@ use crate::{
 };
 
 #[pyfunction]
+#[allow(clippy::too_many_arguments)]
 pub fn virac2_pm_rgb<'py>(
     py: Python<'py>,
     max_n_steps: usize,
     n_burn_in: usize,
     initial_conditions: PyReadonlyArray2<'py, f64>,
     b_coeffs: PyReadonlyArray2<'py, f64>,
-    pml: PyReadonlyArray1<'py, f64>,
-    pmle: PyReadonlyArray1<'py, f64>,
+    pm: PyReadonlyArray1<'py, f64>,
+    pme: PyReadonlyArray1<'py, f64>,
+    weight: PyReadonlyArray1<'py, f64>,
 ) -> PyResult<Bound<'py, PyTuple>> {
     let initial_conditions = initial_conditions.as_array().to_owned();
     let n_walkers = initial_conditions.nrows();
     let n_parameters: usize = initial_conditions.ncols();
 
     let b_coeffs = b_coeffs.as_array().to_owned();
-    let pml = pml.as_array().to_owned();
-    let pmle = pmle.as_array().to_owned();
+    let pm = pm.as_array().to_owned();
+    let pme = pme.as_array().to_owned();
+    let weight = weight.as_array().to_owned();
 
     let chains = StaticBuffer::new(max_n_steps, n_walkers, n_parameters);
     let move_handler = DifferentialHandler::new();
-    let model = C2027LlViracV2ProperMotion::new(b_coeffs, pml, pmle);
+    let model = C2027LlViracV2ProperMotion::new(b_coeffs, pm, pme, weight);
 
     let mut ess =
         EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, C2027LlViracV2ProperMotion>::new(

@@ -11,23 +11,25 @@ use crate::{functions::priors::ln_prior_normal, log_likelihood::LogLikelihoodMod
 
 pub struct C2027LlViracV2ProperMotion {
     b_coeffs: Array2<f64>,
-    pml: Array1<f64>,
-    pmle2: Array1<f64>,
+    pm: Array1<f64>,
+    pme2: Array1<f64>,
+    weight: Array1<f64>,
 
     n_nodes: usize,
 }
 
 impl C2027LlViracV2ProperMotion {
-    pub fn new(b_coeffs: Array2<f64>, pml: Array1<f64>, pmle: Array1<f64>) -> Self {
+    pub fn new(b_coeffs: Array2<f64>, pm: Array1<f64>, pme: Array1<f64>, weight: Array1<f64>) -> Self {
         let n_nodes = b_coeffs.shape()[1];
 
-        assert!(pml.shape()[0] == pmle.shape()[0]);
-        assert!(pml.shape()[0] == b_coeffs.shape()[0]);
+        assert!(pm.shape()[0] == pme.shape()[0]);
+        assert!(pm.shape()[0] == b_coeffs.shape()[0]);
 
         Self {
             b_coeffs,
-            pml,
-            pmle2: pmle.iter().map(|x| x.powi(2)).collect(),
+            pm,
+            pme2: pme.iter().map(|x| x.powi(2)).collect(),
+            weight,
             n_nodes,
         }
     }
@@ -92,7 +94,7 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotion {
             ln_prior_normal(sig_nodes[i], 3.0, 5.0, &mut ll);
         }
 
-        for (i, (x, e2)) in self.pml.iter().zip(self.pmle2.iter()).enumerate() {
+        for (i, (x, e2)) in self.pm.iter().zip(self.pme2.iter()).enumerate() {
             let pred_mu = self
                 .b_coeffs
                 .row(i)
@@ -113,7 +115,7 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotion {
                 return Ok(f64::NEG_INFINITY);
             }
 
-            ll += log_normalised_gaussian_s2(*x, pred_mu, *e2 + pred_sigma.powi(2))
+            ll += self.weight[i] * log_normalised_gaussian_s2(*x, pred_mu, *e2 + pred_sigma.powi(2))
         }
 
         Ok(ll)
