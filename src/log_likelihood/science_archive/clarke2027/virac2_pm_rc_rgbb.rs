@@ -21,33 +21,36 @@ use crate::{
 
 pub struct C2027LlViracV2ProperMotionRcRgbb {
     b_coeffs: Array2<f64>,
-    pml: Array1<f64>,
-    pmle2: Array1<f64>,
+    pm: Array1<f64>,
+    pme2: Array1<f64>,
     ln_theta_rc: Array1<f64>,
     ln_one_sub_theta_rc: Array1<f64>,
+    weight: Array1<f64>,
     n_nodes: usize,
 }
 
 impl C2027LlViracV2ProperMotionRcRgbb {
     pub fn new(
         b_coeffs: Array2<f64>,
-        pml: Array1<f64>,
-        pmle: Array1<f64>,
+        pm: Array1<f64>,
+        pme: Array1<f64>,
         theta_rc: Array1<f64>,
+        weight: Array1<f64>,
     ) -> Self {
         let n_nodes = b_coeffs.shape()[1];
 
-        assert!(pml.shape()[0] == pmle.shape()[0]);
-        assert!(pml.shape()[0] == b_coeffs.shape()[0]);
+        assert!(pm.shape()[0] == pme.shape()[0]);
+        assert!(pm.shape()[0] == b_coeffs.shape()[0]);
 
         let ln_theta_rc = theta_rc.iter().map(|x| x.ln()).collect();
         let ln_one_sub_theta_rc = theta_rc.iter().map(|x| (1.0 - x).ln()).collect();
         Self {
             b_coeffs,
-            pml,
-            pmle2: pmle.iter().map(|x| x.powi(2)).collect(),
+            pm,
+            pme2: pme.iter().map(|x| x.powi(2)).collect(),
             ln_theta_rc,
             ln_one_sub_theta_rc,
+            weight,
             n_nodes,
         }
     }
@@ -166,7 +169,7 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
             ln_prior_normal(sig_nodes[i], 3.0, 5.0, &mut ll);
         }
 
-        for (i, (x, e2)) in self.pml.iter().zip(self.pmle2.iter()).enumerate() {
+        for (i, (x, e2)) in self.pm.iter().zip(self.pme2.iter()).enumerate() {
             let pred_mu = self
                 .b_coeffs
                 .row(i)
@@ -187,7 +190,7 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
                 return Ok(f64::NEG_INFINITY);
             }
 
-            ll += log_sum_exp(
+            ll += self.weight[i] * log_sum_exp(
                 // Red clump component
                 self.ln_theta_rc[i]
                     + log_normalised_gaussian_s2(*x, pred_mu, *e2 + pred_sigma.powi(2)),
