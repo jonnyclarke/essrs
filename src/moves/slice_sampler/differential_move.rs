@@ -10,6 +10,7 @@
 //! | The new point v0', and corresponding likelihood, l0', are stored as next element on the MCMC walk.
 
 use ndarray::{Array1, ArrayViewMut1, Zip};
+use rayon::prelude::*;
 
 use crate::{
     log_likelihood::LogLikelihoodModel,
@@ -50,8 +51,6 @@ impl DifferentialMove {
     }
 }
 
-use rayon::prelude::*;
-
 impl EnsembleMove for DifferentialMove {
     fn jump<L: LogLikelihoodModel + Sync>(
         &self,
@@ -70,7 +69,6 @@ impl EnsembleMove for DifferentialMove {
                 let mut direction = state_i.get_ith_state_vector(i).to_owned();
 
                 let mut internal = state_i.get_ith_state_vector(i).to_owned();
-
                 let mut physical = state_i.get_ith_state_vector(i).to_owned();
 
                 let ll_floor = state_i.get_ith_ll(i) + self.get_likelihood_floor(&mut rng);
