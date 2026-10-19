@@ -10,6 +10,7 @@ use anyhow;
 use nalgebra::{Cholesky, DMatrix, DVector};
 use ndarray::{Array1, Array2};
 use rand_distr::{Distribution, StandardNormal};
+use rayon::prelude::*;
 use thiserror::Error;
 
 use crate::{
@@ -81,7 +82,8 @@ impl EnsembleMove for GaussianMove {
         state_i: &WalkerState,
         state_j: &mut WalkerState,
     ) -> anyhow::Result<()> {
-        let mut rng = rand::rng();
+        let n_walkers = state_i.n_walkers();
+
         let state_matrix = state_i.get_state_matrix().to_owned();
 
         let cov = state_to_covariance(state_matrix)?;
@@ -91,39 +93,53 @@ impl EnsembleMove for GaussianMove {
         let chol = Cholesky::new(cov).ok_or(GaussianMoveError::CovarianceToCholeskyError)?;
         let l = chol.l();
 
-        // we generate multiple scratch arrays to avoid constantly re-allocating
-        let mut internal = state_i.get_ith_state_vector(0).to_owned();
-        let mut physical = state_i.get_ith_state_vector(0).to_owned();
+        let proposals: Vec<anyhow::Result<(Array1<f64>, f64)>> = (0..n_walkers)
+            .into_par_iter()
+            .map(|i| {
+                let mut rng = rand::rng();
 
-        for i in 0..state_i.get_ll_vector().len() {
-            // get the threshold for acceptance
-            let ll_floor = state_i.get_ith_ll(i) + self.get_likelihood_floor(&mut rng);
+                let z =
+                    DVector::from_iterator(dim, (0..dim).map(|_| StandardNormal.sample(&mut rng)));
+                let direction = Array1::from((&l * &z).iter().cloned().collect::<Vec<f64>>());
 
-            let current = state_i.get_ith_state_vector(i).to_owned();
+                // we generate multiple scratch arrays to avoid constantly re-allocating
+                let mut internal = state_i.get_ith_state_vector(i).to_owned();
+                let mut physical = state_i.get_ith_state_vector(i).to_owned();
 
-            let z = DVector::from_iterator(dim, (0..dim).map(|_| StandardNormal.sample(&mut rng)));
-            let direction = Array1::from((&l * &z).iter().cloned().collect::<Vec<f64>>());
+                // get the threshold for acceptance
+                let ll_floor = state_i.get_ith_ll(i) + self.get_likelihood_floor(&mut rng);
 
-            let search_bounds = step_out(
-                log_likelihood_model,
-                current.view(),
-                direction.view(),
-                &mut internal.view_mut(),
-                &mut physical.view_mut(),
-                ll_floor,
-            )?;
+                let current = state_i.get_ith_state_vector(i);
 
-            let log_likelihood = step_in(
-                &mut rng,
-                log_likelihood_model,
-                current.view(),
-                direction.view(),
-                search_bounds,
-                &mut internal.view_mut(),
-                &mut physical.view_mut(),
-            )?;
+                let search_bounds = step_out(
+                    log_likelihood_model,
+                    current.view(),
+                    direction.view(),
+                    &mut internal.view_mut(),
+                    &mut physical.view_mut(),
+                    ll_floor,
+                )?;
+
+                let log_likelihood = step_in(
+                    &mut rng,
+                    log_likelihood_model,
+                    current.view(),
+                    direction.view(),
+                    search_bounds,
+                    &mut internal.view_mut(),
+                    &mut physical.view_mut(),
+                )?;
+
+                Ok((internal, log_likelihood))
+            })
+            .collect();
+
+        // Commit the results sequentially.
+        for (i, proposal) in proposals.into_iter().enumerate() {
+            let (internal, log_likelihood) = proposal?;
 
             state_j.get_mut_ith_state_vector(i).assign(&internal);
+
             *state_j.get_mut_ith_ll(i) = log_likelihood;
         }
 
