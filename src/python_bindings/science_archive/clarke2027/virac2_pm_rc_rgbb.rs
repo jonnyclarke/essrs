@@ -1,7 +1,7 @@
 use numpy::{PyArray1, PyArray3, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::{prelude::*, types::PyTuple};
 
-use crate::{chains::ChainBuffer, moves::move_handlers::differential_handler::DifferentialHandler};
+use crate::{chains::ChainBuffer, moves::move_handlers::diffnorm_handler::DiffNormHandler};
 use crate::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
@@ -34,12 +34,12 @@ pub fn virac2_pm_rc_rgbb<'py>(
     let weight = weight.as_array().to_owned();
 
     let chains = StaticBuffer::new(max_n_steps, n_walkers, n_parameters);
-    let move_handler = DifferentialHandler::new();
+    let move_handler = DiffNormHandler::default();
     let model = C2027LlViracV2ProperMotionRcRgbb::new(b_coeffs, pm, pme, theta_rc, weight);
 
     let mut ess = EnsembleSliceSampler::<
         StaticBuffer,
-        DifferentialHandler,
+        DiffNormHandler,
         C2027LlViracV2ProperMotionRcRgbb,
     >::new(
         max_n_steps,
