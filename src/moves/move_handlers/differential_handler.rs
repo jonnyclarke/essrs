@@ -1,5 +1,5 @@
 use crate::{
-    log_likelihood::WrappedLogLikelihoodModel,
+    log_likelihood::LogLikelihoodModel,
     moves::{DifferentialMove, EnsembleMove, EnsembleMoveHandler, MoveType},
 };
 
@@ -26,7 +26,7 @@ impl EnsembleMoveHandler for DifferentialHandler {
         MoveType::Differential
     }
 
-    fn distribute_jump<L: WrappedLogLikelihoodModel>(
+    fn distribute_jump<L: LogLikelihoodModel>(
         &mut self,
         _iteration: usize,
         model: &L,

@@ -1,12 +1,14 @@
-//! The chains module is where we track the history of the MCMC walkers.
+//! Chains are the memory of previous values in the MCMC
 
 pub mod static_buffer;
 
 use ndarray::{Array1, Array2, Array3};
 use thiserror::Error;
 
+/// Errors accessing the chain
 #[derive(Debug, Error)]
 pub enum ChainError {
+    /// User attempts to access an empty chain buffer
     #[error("invalid access to empty chain buffer")]
     EmptyChainBufferError,
 }

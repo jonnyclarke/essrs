@@ -1,13 +1,10 @@
-//! This module contains helper functions implemented for ease of use
+//! Numerical functions of the following types:
+//! * transforms: manipulating internal phase space to avoid hard boundary priors
+//! * likelihood: common likelihood functions such as normal in 1/2 D
+//! * priors: common priors available for use in likelihood functions
+//! * utility: function wrappers to apply column wise to a 2d array
 
-/// Module providing common likelihood functions such as normal distribution
 pub mod likelihood;
-
-/// Module providing numerical functions for use in custom log-likelihood functions. An example would be the log-add-exp algorithms used for numerically stable summation of log-likelihoods.
 pub mod numerical;
-
-// Module providing common functions used as priors.
 pub mod priors;
-
-// Module providing parameter transformation functions used for efficiently exploring parameter space.
 pub mod transforms;

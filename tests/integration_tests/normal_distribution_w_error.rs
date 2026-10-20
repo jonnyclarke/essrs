@@ -6,7 +6,6 @@ use essrs::{
     moves::move_handlers::differential_handler::DifferentialHandler,
 };
 use ndarray::array;
-use tempfile::NamedTempFile;
 
 #[test]
 fn test_normal_distribution_with_errors() -> anyhow::Result<()> {
@@ -48,16 +47,6 @@ fn test_normal_distribution_with_errors() -> anyhow::Result<()> {
     ess.initialise(start.view())?;
 
     ess.run_sampler(200)?;
-
-    let tmp_file = NamedTempFile::new()?;
-    let path = tmp_file.path();
-
-    let _ = ess.chains.dump_final_walkers(path);
-
-    let tmp_file = NamedTempFile::new()?;
-    let path = tmp_file.path();
-
-    let _ = ess.save_log_likelihood(path);
 
     ess.display_parameter_summaries();
 

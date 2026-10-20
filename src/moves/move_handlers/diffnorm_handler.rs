@@ -1,6 +1,6 @@
 use crate::{
     moves::{
-        DifferentialMove, EnsembleMove, EnsembleMoveHandler, MoveType, WrappedLogLikelihoodModel,
+        DifferentialMove, EnsembleMove, EnsembleMoveHandler, LogLikelihoodModel, MoveType,
         slice_sampler::gaussian_move::GaussianMove,
     },
     state::WalkerState,
@@ -40,7 +40,7 @@ impl EnsembleMoveHandler for DiffNormHandler {
         }
     }
 
-    fn distribute_jump<L: WrappedLogLikelihoodModel>(
+    fn distribute_jump<L: LogLikelihoodModel>(
         &mut self,
         iteration: usize,
         model: &L,
