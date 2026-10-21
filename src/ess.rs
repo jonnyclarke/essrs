@@ -74,7 +74,7 @@ impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSlic
             )?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
 
-            let internal = self.state.get_state_matrix();
+            let internal = self.state.get_state_matrix_view();
             let mut physical = internal.to_owned();
 
             self.model
