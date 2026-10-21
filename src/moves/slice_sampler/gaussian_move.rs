@@ -83,7 +83,7 @@ impl EnsembleMove for GaussianMove {
     ) -> anyhow::Result<()> {
         let n_walkers = state.n_walkers();
 
-        let state_matrix = state.get_state_matrix().to_owned();
+        let state_matrix = state.get_state_matrix_view().to_owned();
 
         let cov = state_to_covariance(state_matrix)?;
         let dim = cov.ncols();
@@ -137,9 +137,8 @@ impl EnsembleMove for GaussianMove {
         for (i, proposal) in proposals.into_iter().enumerate() {
             let (internal, log_likelihood) = proposal?;
 
-            state.get_mut_ith_state_vector(i).assign(&internal);
-
-            *state.get_mut_ith_ll(i) = log_likelihood;
+            state.assign_ith_state_vector(i, internal.view());
+            state.assign_ith_ll(i, log_likelihood);
         }
 
         Ok(())

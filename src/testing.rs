@@ -16,14 +16,14 @@ impl WalkerStateBuilder {
         }
     }
 
-    pub fn set_state_matrix(mut self, x: &Array2<f64>) -> Self {
-        self.state.get_mut_state_matrix().assign(x);
+    pub fn set_state_matrix(mut self, x: Array2<f64>) -> Self {
+        self.state.assign_state_matrix(x.view());
 
         self
     }
 
-    pub fn set_ll_array(mut self, ll: &Array1<f64>) -> Self {
-        self.state.get_mut_ll_vector().assign(ll);
+    pub fn set_ll_array(mut self, ll: Array1<f64>) -> Self {
+        self.state.assign_ll_vector(ll.view());
 
         self
     }

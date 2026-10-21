@@ -34,36 +34,29 @@ impl WalkerState {
         std::mem::swap(&mut self.ll_current, &mut self.ll_next);
     }
 
-    // pub fn assign_state_matrix(&mut self, a: ArrayView2<f64>) {
-    //     self.next.assign(&a)
-    // }
+    pub fn assign_state_matrix(&mut self, a: ArrayView2<f64>) {
+        self.next.assign(&a)
+    }
 
-    // pub fn assign_state_row(&mut self, index: usize, a: ArrayView1<f64>) {
-    //     self.next.row_mut(index).assign(&a)
-    // }
+    pub fn assign_ith_state_vector(&mut self, index: usize, a: ArrayView1<f64>) {
+        self.next.row_mut(index).assign(&a)
+    }
 
-    // pub fn assign_log_likelihood_element(&mut self, index: usize, ll: f64) {
-    //     self.ll_next[index] = ll
-    // }
+    pub fn assign_ll_vector(&mut self, ll: ArrayView1<f64>) {
+        self.ll_next.assign(&ll)
+    }
 
-    // pub fn current_state_matrix<'a>(&'a self) -> ArrayView2<'a, f64> {
-    //     self.current.view()
-    // }
+    pub fn assign_ith_ll(&mut self, index: usize, ll: f64) {
+        self.ll_next[index] = ll
+    }
+    
+    pub fn get_state_matrix_view<'a>(&'a self) -> ArrayView2<'a, f64> {
+        self.current.view()
+    }
 
-    // pub fn current_state_row_view<'a>(&'a self, index: usize) -> ArrayView1<'a, f64> {
-    //     let row = self.current.row(index);
-    //     row
-    // }
-
-    // pub fn current_ll_view<'a>(&'a self) -> ArrayView1<'a, f64> {
-    //     self.ll_current.view()
-    // }
 }
 
 impl WalkerState {
-    pub fn get_state_matrix<'a>(&'a self) -> ArrayView2<'a, f64> {
-        self.current.view()
-    }
 
     pub fn get_mut_state_matrix<'a>(&'a mut self) -> ArrayViewMut2<'a, f64> {
         self.next.view_mut()
@@ -173,11 +166,11 @@ impl WalkerState {
 //     }
 
 //     #[test]
-//     fn test_get_state_matrix() -> anyhow::Result<()> {
+//     fn test_get_state_matrix_view() -> anyhow::Result<()> {
 //         let mut state = helper_get_mut_ith_ll();
 //         // current
 //         assert_eq!(
-//             state.get_state_matrix(),
+//             state.get_state_matrix_view(),
 //             array![[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
 //         );
 //         assert_eq!(

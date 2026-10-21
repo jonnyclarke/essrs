@@ -106,9 +106,8 @@ impl EnsembleMove for DifferentialMove {
         for (i, proposal) in proposals.into_iter().enumerate() {
             let (internal, log_likelihood) = proposal?;
 
-            state.get_mut_ith_state_vector(i).assign(&internal);
-
-            *state.get_mut_ith_ll(i) = log_likelihood;
+            state.assign_ith_state_vector(i, internal.view());
+            state.assign_ith_ll(i, log_likelihood);
         }
 
         Ok(())
@@ -129,8 +128,8 @@ mod tests {
     #[test]
     fn test_get_vector() {
         let state = WalkerStateBuilder::new()
-            .set_state_matrix(&array![[-1.0], [0.0], [1.0]])
-            .set_ll_array(&array![-1.0, 0.0, 1.0])
+            .set_state_matrix(array![[-1.0], [0.0], [1.0]])
+            .set_ll_array(array![-1.0, 0.0, 1.0])
             .construct();
 
         let diff_move = DifferentialMove::default();
