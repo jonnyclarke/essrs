@@ -16,7 +16,6 @@ pub enum InitialisationError {
 
 impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSliceSampler<C, M, L> {
     pub fn initialise(&mut self, physical: ArrayView2<f64>) -> Result<(), InitialisationError> {
-
         let mut internal = physical.to_owned();
 
         self.model
@@ -24,16 +23,13 @@ impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSlic
 
         // this is used simply to pass to log-likelihood in case we need to report an error
         // TODO: can get rid of this allocation?
-        let mut physical = self.state
-            .get_ith_state_vector_view(0).to_owned();
+        let mut physical = self.state.get_ith_state_vector_view(0).to_owned();
 
         for i in 0..self.n_walkers {
             self.state.assign_ith_ll(
                 i,
-                self.model.wrapped_log_likelihood(
-                    internal.row(i),
-                    &mut physical.view_mut(),
-                )?
+                self.model
+                    .wrapped_log_likelihood(internal.row(i), &mut physical.view_mut())?,
             )
         }
 
@@ -79,7 +75,12 @@ mod tests {
                 + ((-2.0_f64).exp() / (2.0 * std::f64::consts::PI).sqrt()).ln(),
         ];
 
-        for (computed, expected) in ess.state.get_ll_vector_view().iter().zip(expected_ll.iter()) {
+        for (computed, expected) in ess
+            .state
+            .get_ll_vector_view()
+            .iter()
+            .zip(expected_ll.iter())
+        {
             assert_relative_eq!(computed, expected, epsilon = 1e-6);
         }
 
@@ -89,7 +90,11 @@ mod tests {
             [-1.0_f64, softplus_inverse(1.0_f64)?],
             [2.0_f64, softplus_inverse(1.0_f64)?]
         ];
-        assert_relative_eq!(true_data_state, ess.state.get_state_matrix_view(), epsilon = 1e-6);
+        assert_relative_eq!(
+            true_data_state,
+            ess.state.get_state_matrix_view(),
+            epsilon = 1e-6
+        );
 
         Ok(())
     }

@@ -58,20 +58,14 @@ impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSlic
     pub fn run_sampler(&mut self, n_burn_in: usize) -> anyhow::Result<()> {
         // we allow burn in to eliminate effect on chains of the starting point
         for iteration in 1..=n_burn_in {
-            self.move_handler.distribute_jump(
-                iteration,
-                &self.model,
-                &mut self.state,
-            )?;
+            self.move_handler
+                .distribute_jump(iteration, &self.model, &mut self.state)?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
         }
 
         for iteration in 1..=self.max_n_steps {
-            self.move_handler.distribute_jump(
-                iteration,
-                &self.model,
-                &mut self.state,
-            )?;
+            self.move_handler
+                .distribute_jump(iteration, &self.model, &mut self.state)?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
 
             let internal = self.state.get_state_matrix_view();
@@ -90,5 +84,4 @@ impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSlic
         self.chains
             .display_parameter_summaries(self.n_parameters as i32);
     }
-
 }

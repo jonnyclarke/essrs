@@ -69,14 +69,12 @@ impl WalkerState {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use ndarray::array;
     use anyhow;
+    use ndarray::array;
 
     use super::*;
-
     use crate::testing::WalkerStateBuilder;
 
     fn build_test_state() -> WalkerState {
@@ -105,10 +103,7 @@ mod tests {
             state.get_state_matrix_view(),
             array![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
         );
-        assert_eq!(
-            state.get_ll_vector_view(),
-            array![0.2, 0.3, 0.4]
-        );
+        assert_eq!(state.get_ll_vector_view(), array![0.2, 0.3, 0.4]);
 
         state.swap();
         // next
@@ -116,10 +111,7 @@ mod tests {
             state.get_state_matrix_view(),
             array![[7.0, 8.0], [9.0, 1.0], [2.0, 3.0]]
         );
-        assert_eq!(
-            state.get_ll_vector_view(),
-            array![0.5, 0.6, 0.7]
-        );
+        assert_eq!(state.get_ll_vector_view(), array![0.5, 0.6, 0.7]);
 
         Ok(())
     }
@@ -127,7 +119,7 @@ mod tests {
     #[test]
     fn test_state_manipulation() -> anyhow::Result<()> {
         let mut state = build_test_state();
-        
+
         state.assign_ith_state_vector(0, array![10.0, 11.0].view());
         state.assign_ith_ll(0, -0.1);
 
@@ -137,22 +129,12 @@ mod tests {
             state.get_state_matrix_view(),
             array![[10.0, 11.0], [9.0, 1.0], [2.0, 3.0]]
         );
-        assert_eq!(
-            state.get_ll_vector_view(),
-            array![-0.1, 0.6, 0.7]
-        );
+        assert_eq!(state.get_ll_vector_view(), array![-0.1, 0.6, 0.7]);
 
-        assert_eq!(
-            state.get_ith_state_vector_view(1),
-            array![9.0, 1.0]
-        );
+        assert_eq!(state.get_ith_state_vector_view(1), array![9.0, 1.0]);
 
-        assert_eq!(
-            state.get_ith_ll_value(1),
-            0.6
-        );
+        assert_eq!(state.get_ith_ll_value(1), 0.6);
 
         Ok(())
     }
-
 }
