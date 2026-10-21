@@ -1,7 +1,7 @@
 use numpy::{PyArray3, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use crate::{chains::ChainBuffer, moves::move_handlers::differential_handler::DifferentialHandler};
+use crate::moves::move_handlers::differential_handler::DifferentialHandler;
 use crate::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
@@ -41,7 +41,7 @@ pub fn normal_1d_deconv<'py>(
     ess.initialise(initial_conditions.view()).unwrap(); // compute log-likelihood of initial positions
     ess.run_sampler(n_burn_in).unwrap(); // run sampler
 
-    let result = ess.chains.extract_state();
+    let result = ess.extract_state();
 
     Ok(PyArray3::from_owned_array(py, result))
 }

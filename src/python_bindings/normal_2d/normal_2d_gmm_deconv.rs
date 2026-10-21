@@ -2,15 +2,13 @@ use numpy::{PyArray3, PyReadonlyArray2};
 use pyo3::prelude::*;
 
 use crate::{
-    chains::ChainBuffer, log_likelihood::normal_2d::N_PARAMETERS_NORMAL_1D,
-    moves::move_handlers::differential_handler::DifferentialHandler,
-};
-use crate::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
     log_likelihood::normal_2d::{
         GaussianMixModel2DimUnDeConv, // Likelihood model for 2d Gaussian MixModel data with errors
+        N_PARAMETERS_NORMAL_1D,
     },
+    moves::move_handlers::differential_handler::DifferentialHandler,
 };
 
 #[pyfunction]
@@ -52,7 +50,7 @@ pub fn normal_2d_gmm_deconv<'py>(
     ess.initialise(initial_conditions.view()).unwrap(); // compute log-likelihood of initial positions
     ess.run_sampler(n_burn_in).unwrap(); // run sampler
 
-    let result = ess.chains.extract_state();
+    let result = ess.extract_state();
 
     Ok(PyArray3::from_owned_array(py, result))
 }
