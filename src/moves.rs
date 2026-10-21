@@ -23,8 +23,7 @@ pub trait EnsembleMove {
     fn jump<L: LogLikelihoodModel>(
         &self,
         log_likelihood_model: &L,
-        state_i: &WalkerState,
-        state_j: &mut WalkerState,
+        state: &mut WalkerState,
     ) -> anyhow::Result<()>;
 }
 
@@ -35,7 +34,6 @@ pub trait EnsembleMoveHandler {
         &mut self,
         iteration: usize,
         model: &L,
-        state_i: &WalkerState,
-        state_j: &mut WalkerState,
+        state: &mut WalkerState,
     ) -> anyhow::Result<()>;
 }

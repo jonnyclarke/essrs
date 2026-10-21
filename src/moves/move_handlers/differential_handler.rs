@@ -30,10 +30,9 @@ impl EnsembleMoveHandler for DifferentialHandler {
         &mut self,
         _iteration: usize,
         model: &L,
-        state_i: &crate::state::WalkerState,
-        state_j: &mut crate::state::WalkerState,
+        state: &mut crate::state::WalkerState,
     ) -> anyhow::Result<()> {
-        self.move_differential.jump(model, state_i, state_j)?;
+        self.move_differential.jump(model, state)?;
 
         Ok(())
     }

@@ -24,8 +24,7 @@ impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSlic
             move_handler,
             model,
 
-            state_i: WalkerState::new(n_walkers, n_parameters),
-            state_j: WalkerState::new(n_walkers, n_parameters),
+            state: WalkerState::new(n_walkers, n_parameters),
         }
     }
 }

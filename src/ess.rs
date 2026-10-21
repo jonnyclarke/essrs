@@ -38,26 +38,14 @@ pub struct EnsembleSliceSampler<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLi
     /// this owns the data being fitted making 'EnsembleSliceSampler' generic over data
     model: L,
 
-    /// walker state of the i^th iteration
-    state_i: WalkerState,
-    /// walker state of the j = i+1 th iteration
-    /// TODO: potentially swap this for a swap storage system
-    state_j: WalkerState,
+    /// walker state: includes 'current' and 'next'
+    state: WalkerState,
 }
 
 impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSliceSampler<C, M, L> {
-    /// accept the state change by copying state_j into state_i
-    /// TODO: remove this for swap style storage
+    /// Calls state-buffer swap which flips current and next memory locations
     pub fn accept_proposed_state(&mut self) {
-        // let mut state0 = self.state_i.get_mut_state_matrix();
-        self.state_i
-            .get_mut_state_matrix()
-            .assign(&self.state_j.get_state_matrix());
-
-        // let mut ll0 = self.state_i.get_mut_ll_vector();
-        self.state_i
-            .get_mut_ll_vector()
-            .assign(&self.state_j.get_mut_ll_vector());
+        self.state.swap();
     }
 
     /// Run the MCMC sampler
@@ -73,8 +61,7 @@ impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSlic
             self.move_handler.distribute_jump(
                 iteration,
                 &self.model,
-                &self.state_i,
-                &mut self.state_j,
+                &mut self.state,
             )?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
         }
@@ -83,12 +70,11 @@ impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSlic
             self.move_handler.distribute_jump(
                 iteration,
                 &self.model,
-                &self.state_i,
-                &mut self.state_j,
+                &mut self.state,
             )?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
 
-            let internal = self.state_i.get_state_matrix();
+            let internal = self.state.get_state_matrix();
             let mut physical = internal.to_owned();
 
             self.model
@@ -105,45 +91,4 @@ impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSlic
             .display_parameter_summaries(self.n_parameters as i32);
     }
 
-    // TODO: remove this function; pass as standalone functions
-    pub fn print_quantile_summary(&self) -> anyhow::Result<()> {
-        // Make a sorted copy
-        let mut values = self.state_i.get_ll_vector().to_vec();
-        values.sort_by(|a, b| {
-            a.partial_cmp(b)
-                .expect("sorting of log-likelihood vector has failed")
-        });
-
-        let n = values.len();
-
-        let p25 = n / 4;
-        let p50 = n / 2;
-        let p75 = 3 * n / 4;
-
-        for (i, v) in values.iter().enumerate() {
-            if i == 0 {
-                println!("-- MIN: {}", v)
-            }
-            if i == p25 {
-                println!("-- p25: {}", v)
-            }
-            if i == p50 {
-                println!("-- p50: {}", v)
-            }
-            if i == p75 {
-                println!("-- p75: {}", v)
-            }
-            if i == n - 1 {
-                println!("-- MAX: {}\n", v)
-            }
-        }
-        Ok(())
-    }
-
-    /// Extract full state
-    ///
-    /// This wraps the chain buffer object's 'extract_state' function
-    pub fn extract_state(&self) -> Array3<f64> {
-        self.chains.extract_state()
-    }
 }
