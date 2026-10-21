@@ -43,8 +43,8 @@ impl DifferentialMove {
         direction: &mut ArrayViewMut1<f64>,
     ) {
         Zip::from(&mut *direction)
-            .and(&state.get_ith_state_vector(l))
-            .and(&state.get_ith_state_vector(r))
+            .and(&state.get_ith_state_vector_view(l))
+            .and(&state.get_ith_state_vector_view(r))
             .for_each(|out, &left, &right| {
                 *out = left - right;
             });
@@ -65,14 +65,14 @@ impl EnsembleMove for DifferentialMove {
                 let mut rng = rand::rng();
 
                 // Each worker owns its own scratch arrays.
-                let mut direction = state.get_ith_state_vector(i).to_owned();
+                let mut direction = state.get_ith_state_vector_view(i).to_owned();
 
-                let mut internal = state.get_ith_state_vector(i).to_owned();
-                let mut physical = state.get_ith_state_vector(i).to_owned();
+                let mut internal = state.get_ith_state_vector_view(i).to_owned();
+                let mut physical = state.get_ith_state_vector_view(i).to_owned();
 
-                let ll_floor = state.get_ith_ll(i) + self.get_likelihood_floor(&mut rng);
+                let ll_floor = state.get_ith_ll_value(i) + self.get_likelihood_floor(&mut rng);
 
-                let current = state.get_ith_state_vector(i);
+                let current = state.get_ith_state_vector_view(i);
 
                 let l = get_rn_not(&mut rng, n_walkers, i);
                 let r = get_rn_not_or(&mut rng, n_walkers, i, l);
@@ -106,9 +106,8 @@ impl EnsembleMove for DifferentialMove {
         for (i, proposal) in proposals.into_iter().enumerate() {
             let (internal, log_likelihood) = proposal?;
 
-            state.get_mut_ith_state_vector(i).assign(&internal);
-
-            *state.get_mut_ith_ll(i) = log_likelihood;
+            state.assign_ith_state_vector(i, internal.view());
+            state.assign_ith_ll(i, log_likelihood);
         }
 
         Ok(())
@@ -128,9 +127,10 @@ mod tests {
 
     #[test]
     fn test_get_vector() {
-        let state = WalkerStateBuilder::new()
-            .set_state_matrix(&array![[-1.0], [0.0], [1.0]])
-            .set_ll_array(&array![-1.0, 0.0, 1.0])
+        let state = WalkerStateBuilder::new(3, 1)
+            .set_state_matrix(array![[-1.0], [0.0], [1.0]])
+            .set_ll_vector(array![-1.0, 0.0, 1.0])
+            .swap()
             .construct();
 
         let diff_move = DifferentialMove::default();

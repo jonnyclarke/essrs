@@ -74,7 +74,7 @@ impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSlic
             )?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
 
-            let internal = self.state.get_state_matrix();
+            let internal = self.state.get_state_matrix_view();
             let mut physical = internal.to_owned();
 
             self.model
@@ -91,4 +91,10 @@ impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSlic
             .display_parameter_summaries(self.n_parameters as i32);
     }
 
+    /// Extract full state
+    ///
+    /// This wraps the chain buffer object's 'extract_state' function
+    pub fn extract_state(&self) -> Array3<f64> {
+        self.chains.extract_state()
+    }
 }
