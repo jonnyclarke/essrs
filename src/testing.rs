@@ -10,9 +10,9 @@ pub struct WalkerStateBuilder {
 }
 
 impl WalkerStateBuilder {
-    pub fn new() -> Self {
+    pub fn new(n_walkers: usize, n_parameters: usize) -> Self {
         Self {
-            state: WalkerState::new(3, 1),
+            state: WalkerState::new(n_walkers, n_parameters),
         }
     }
 
@@ -22,8 +22,14 @@ impl WalkerStateBuilder {
         self
     }
 
-    pub fn set_ll_array(mut self, ll: Array1<f64>) -> Self {
+    pub fn set_ll_vector(mut self, ll: Array1<f64>) -> Self {
         self.state.assign_ll_vector(ll.view());
+
+        self
+    }
+
+    pub fn swap(mut self) -> Self {
+        self.state.swap();
 
         self
     }
