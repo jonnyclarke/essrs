@@ -5,6 +5,8 @@
 mod initialise;
 mod new;
 
+use ndarray::Array3;
+
 use crate::{
     chains::ChainBuffer,
     log_likelihood::{LogLikelihoodModel, WrappedLogLikelihoodModel},
@@ -29,12 +31,12 @@ pub struct EnsembleSliceSampler<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLi
     n_parameters: usize,
 
     /// chain storage object
-    pub chains: C,
+    chains: C,
     /// move handler object
-    pub move_handler: M,
+    move_handler: M,
     /// log-likelihood object
     /// this owns the data being fitted making 'EnsembleSliceSampler' generic over data
-    pub model: L,
+    model: L,
 
     /// walker state of the i^th iteration
     state_i: WalkerState,
@@ -136,5 +138,12 @@ impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSlic
             }
         }
         Ok(())
+    }
+
+    /// Extract full state
+    ///
+    /// This wraps the chain buffer object's 'extract_state' function
+    pub fn extract_state(&self) -> Array3<f64> {
+        self.chains.extract_state()
     }
 }
