@@ -22,6 +22,9 @@ fmt-all = "fmt --all"
 # Generate crate documentation correctly rendering all mathematics
 doc-math = "doc --features doc-math"
 
+# Run docstring tests -- TODO: add ci/cd process
+doc-test = "test --doc"
+
 # Run the CI commands to locally check that they will pass/fail.
 clippy-ci = "clippy --all-features -- -D warnings"
 fmt-ci = "fmt --all -- --check"

@@ -6,28 +6,28 @@ use thiserror::Error;
 use crate::log_likelihood::{LogLikelihoodError, LogLikelihoodModel, WrappedLogLikelihoodModel};
 
 #[derive(Debug, Error)]
-pub enum SliceSamplerError {
+pub(crate) enum SliceSamplerError {
     #[error("failed stepping out left: {source}")]
-    StepOutLeftError {
+    LeftStep {
         #[source]
         source: LogLikelihoodError,
     },
 
     #[error("failed stepping out right: {source}")]
-    StepOutRightError {
+    RightStep {
         #[source]
         source: LogLikelihoodError,
     },
 
     #[error("failed stepping in: {source}")]
-    StepInError {
+    StepIn {
         #[source]
         source: LogLikelihoodError,
     },
 }
 /// Structure storing information on the likelihood boundaries following the step-out part of the algorithm.
 /// This will be adjusted during step-in until a valid point is found.
-pub struct LikelihoodBounds {
+pub(crate) struct LikelihoodBounds {
     nl: f64,
     nr: f64,
     ll_floor: f64,
@@ -37,7 +37,7 @@ pub struct LikelihoodBounds {
 
 const N_MAX_STEP_OUT_ITERATIONS: usize = 20;
 
-pub fn step_out(
+pub(crate) fn step_out(
     model: &dyn LogLikelihoodModel,
     anchor_vec: ArrayView1<f64>,
     direction_vec: ArrayView1<f64>,
@@ -59,7 +59,7 @@ pub fn step_out(
 
     let mut ll_l = model
         .wrapped_log_likelihood(internal.view(), physical)
-        .map_err(|source| SliceSamplerError::StepOutLeftError { source })?;
+        .map_err(|source| SliceSamplerError::LeftStep { source })?;
 
     let mut il: usize = 1;
 
@@ -75,7 +75,7 @@ pub fn step_out(
 
         ll_l = model
             .wrapped_log_likelihood(internal.view(), physical)
-            .map_err(|source| SliceSamplerError::StepOutLeftError { source })?;
+            .map_err(|source| SliceSamplerError::LeftStep { source })?;
         il += 1;
     }
 
@@ -89,7 +89,7 @@ pub fn step_out(
 
     let mut ll_r = model
         .wrapped_log_likelihood(internal.view(), physical)
-        .map_err(|source| SliceSamplerError::StepOutRightError { source })?;
+        .map_err(|source| SliceSamplerError::RightStep { source })?;
 
     let mut ir: usize = 1;
 
@@ -105,7 +105,7 @@ pub fn step_out(
 
         ll_r = model
             .wrapped_log_likelihood(internal.view(), physical)
-            .map_err(|source| SliceSamplerError::StepOutRightError { source })?;
+            .map_err(|source| SliceSamplerError::RightStep { source })?;
         ir += 1;
     }
 
@@ -118,7 +118,7 @@ pub fn step_out(
     })
 }
 
-pub fn step_in(
+pub(crate) fn step_in(
     rng: &mut dyn RngCore,
     model: &dyn LogLikelihoodModel,
     anchor_vec: ArrayView1<f64>,
@@ -142,7 +142,7 @@ pub fn step_in(
 
         let ll = model
             .wrapped_log_likelihood(internal.view(), physical)
-            .map_err(|source| SliceSamplerError::StepInError { source })?;
+            .map_err(|source| SliceSamplerError::StepIn { source })?;
 
         if ll >= search_bounds.ll_floor {
             return Ok(ll);

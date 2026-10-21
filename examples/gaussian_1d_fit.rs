@@ -4,10 +4,8 @@ use essrs::moves::move_handlers::differential_handler::DifferentialHandler;
 use essrs::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
-    log_likelihood::normal_1d::{
-        GaussianLl1dDataErrors, // Likelihood model for 1d Gaussian data with errors
-        helper_generate_random_gaussian_points, // helper function to generate random gaussian points
-    },
+    log_likelihood::helper_generate_random_gaussian_points, // helper function to generate random gaussian points
+    log_likelihood::normal_1d::GaussianLl1dDataErrors, // Likelihood model for 1d Gaussian data with errors
 };
 use ndarray::Array2;
 use rand_distr::{Distribution, Normal};

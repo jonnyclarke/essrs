@@ -1,11 +1,9 @@
 use crate::{
-    chains::ChainBuffer, ess::EnsembleSliceSampler, log_likelihood::WrappedLogLikelihoodModel,
+    chains::ChainBuffer, ess::EnsembleSliceSampler, log_likelihood::LogLikelihoodModel,
     moves::EnsembleMoveHandler, state::WalkerState,
 };
 
-impl<C: ChainBuffer, M: EnsembleMoveHandler, L: WrappedLogLikelihoodModel>
-    EnsembleSliceSampler<C, M, L>
-{
+impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSliceSampler<C, M, L> {
     pub fn new(
         max_n_steps: usize,
         n_walkers: usize,

@@ -4,7 +4,7 @@ use thiserror::Error;
 use crate::{
     chains::ChainBuffer,
     ess::EnsembleSliceSampler,
-    log_likelihood::{LogLikelihoodError, WrappedLogLikelihoodModel},
+    log_likelihood::{LogLikelihoodError, LogLikelihoodModel, WrappedLogLikelihoodModel},
     moves::EnsembleMoveHandler,
 };
 
@@ -14,9 +14,7 @@ pub enum InitialisationError {
     InvalidLogLikelihood(#[from] LogLikelihoodError),
 }
 
-impl<C: ChainBuffer, M: EnsembleMoveHandler, L: WrappedLogLikelihoodModel>
-    EnsembleSliceSampler<C, M, L>
-{
+impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSliceSampler<C, M, L> {
     pub fn initialise(&mut self, physical: ArrayView2<f64>) -> Result<(), InitialisationError> {
         let internal = self.state_i.get_mut_state_matrix();
 

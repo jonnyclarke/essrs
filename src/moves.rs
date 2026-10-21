@@ -7,8 +7,8 @@ use anyhow;
 use rand::{Rng, RngCore};
 
 use crate::{
-    log_likelihood::WrappedLogLikelihoodModel,
-    moves::slice_sampler::differential_move::DifferentialMove, state::WalkerState,
+    log_likelihood::LogLikelihoodModel, moves::slice_sampler::differential_move::DifferentialMove,
+    state::WalkerState,
 };
 
 pub enum MoveType {
@@ -20,7 +20,7 @@ pub trait EnsembleMove {
     fn get_likelihood_floor(&self, rng: &mut dyn RngCore) -> f64 {
         rng.random_range(0.0_f64..1.0_f64).ln()
     }
-    fn jump<L: WrappedLogLikelihoodModel>(
+    fn jump<L: LogLikelihoodModel>(
         &self,
         log_likelihood_model: &L,
         state_i: &WalkerState,
@@ -31,7 +31,7 @@ pub trait EnsembleMove {
 pub trait EnsembleMoveHandler {
     fn choose_move(&self, iteration: usize) -> MoveType;
 
-    fn distribute_jump<L: WrappedLogLikelihoodModel>(
+    fn distribute_jump<L: LogLikelihoodModel>(
         &mut self,
         iteration: usize,
         model: &L,

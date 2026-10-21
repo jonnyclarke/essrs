@@ -20,10 +20,8 @@ pub mod log_likelihood;
 /// Library of available moves for the ensemble sampler.
 pub mod moves;
 
-/// Implementation of the randomised selection algorithms required by ensemble samplers
-pub mod random;
-
-pub mod slice;
+mod random;
+mod slice;
 
 /// State handler managing transition from i'th MCMC state to (i+1)'th state
 pub mod state;

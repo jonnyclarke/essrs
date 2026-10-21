@@ -2,11 +2,11 @@ use anyhow;
 use essrs::{
     chains::static_buffer::StaticBuffer,
     ess::EnsembleSliceSampler,
-    log_likelihood::normal_1d::{GaussianLl1dDataErrors, helper_generate_random_gaussian_points},
+    log_likelihood::helper_generate_random_gaussian_points, // helper function to generate random gaussian points
+    log_likelihood::normal_1d::GaussianLl1dDataErrors, // Likelihood model for 1d Gaussian data with errors
     moves::move_handlers::differential_handler::DifferentialHandler,
 };
 use ndarray::array;
-use tempfile::NamedTempFile;
 
 #[test]
 fn test_normal_distribution_with_errors() -> anyhow::Result<()> {
@@ -48,16 +48,6 @@ fn test_normal_distribution_with_errors() -> anyhow::Result<()> {
     ess.initialise(start.view())?;
 
     ess.run_sampler(200)?;
-
-    let tmp_file = NamedTempFile::new()?;
-    let path = tmp_file.path();
-
-    let _ = ess.chains.dump_final_walkers(path);
-
-    let tmp_file = NamedTempFile::new()?;
-    let path = tmp_file.path();
-
-    let _ = ess.save_log_likelihood(path);
 
     ess.display_parameter_summaries();
 

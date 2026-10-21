@@ -4,6 +4,7 @@
 [![CI](https://github.com/jonnyclarke/essrs/actions/workflows/integration_testing.yml/badge.svg)]
 [![CI](https://github.com/jonnyclarke/essrs/actions/workflows/clippy.yml/badge.svg)]
 [![CI](https://github.com/jonnyclarke/essrs/actions/workflows/rustfmt.yml/badge.svg)]
+[![CI](https://github.com/jonnyclarke/essrs/actions/workflows/doctest.yml/badge.svg)]
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]
 
 A lightweight implementation of Markov Chain Monte Carlo Ensemble Slice Sampling.

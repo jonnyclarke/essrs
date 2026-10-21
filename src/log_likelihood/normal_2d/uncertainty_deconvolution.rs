@@ -24,7 +24,11 @@ pub const N_PARAMETERS_NORMAL_1D: usize = 5;
 /// Uncertainty De-Convolution
 ///
 /// This requires 5 parameters per component:
-/// - [mu_x, mu_y], [sigma_x, sigma_y], [p]
+/// * mu_x
+/// * mu_y
+/// * sigma_x
+/// * sigma_y
+/// * p
 ///
 /// Note:
 /// - the sigmas must be >0
