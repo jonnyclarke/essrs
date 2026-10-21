@@ -2,11 +2,13 @@
 mod normal_1d;
 mod normal_2d;
 
+mod toy;
+
 use pyo3::prelude::*;
 
 use crate::python_bindings::{
     normal_1d::normal_1d_deconv::normal_1d_deconv,
-    normal_2d::normal_2d_gmm_deconv::normal_2d_gmm_deconv,
+    normal_2d::normal_2d_gmm_deconv::normal_2d_gmm_deconv, toy::rosenbrock::toy_rosenbrock,
 };
 
 #[pymodule]
@@ -18,6 +20,13 @@ fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let normal_2d = PyModule::new(m.py(), "normal_2d")?;
     normal_2d.add_function(wrap_pyfunction!(normal_2d_gmm_deconv, &normal_2d)?)?;
     m.add_submodule(&normal_2d)?;
+
+    // Toy Models -- for evaluation
+
+    let toy = PyModule::new(m.py(), "toy")?;
+    toy.add_function(wrap_pyfunction!(toy_rosenbrock, &toy)?)?;
+
+    m.add_submodule(&toy)?;
 
     Ok(())
 }
