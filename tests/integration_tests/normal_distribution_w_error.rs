@@ -10,6 +10,7 @@ use ndarray::array;
 
 #[test]
 fn test_normal_distribution_with_errors() -> anyhow::Result<()> {
+    eprintln!("\n");
     let data = helper_generate_random_gaussian_points(100)?;
 
     const N_STEPS: usize = 200;
@@ -51,5 +52,6 @@ fn test_normal_distribution_with_errors() -> anyhow::Result<()> {
 
     ess.display_parameter_summaries();
 
+    eprintln!("\n");
     Ok(())
 }

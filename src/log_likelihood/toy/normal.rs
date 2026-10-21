@@ -1,11 +1,7 @@
-
 use anyhow;
-use ndarray::{ArrayView1};
+use ndarray::ArrayView1;
 
-use crate::{
-    functions::likelihood::log_normalised_gaussian,
-    log_likelihood::LogLikelihoodModel,
-};
+use crate::{functions::likelihood::log_normalised_gaussian, log_likelihood::LogLikelihoodModel};
 
 pub struct AnalyticNormalToyLogL {
     mu: f64,
@@ -19,12 +15,11 @@ impl AnalyticNormalToyLogL {
 }
 
 impl LogLikelihoodModel for AnalyticNormalToyLogL {
-    
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let x = parameters[0];
 
         let ll = log_normalised_gaussian(x, self.mu, self.sigma);
-        
+
         Ok(ll)
     }
 }

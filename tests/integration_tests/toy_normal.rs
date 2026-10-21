@@ -9,9 +9,12 @@ use ndarray::array;
 
 #[test]
 fn test_analytical_normal() -> anyhow::Result<()> {
-
+    eprintln!("\n");
     const TARGET_MU: f64 = 2.0;
     const TARGET_SIGMA: f64 = 4.0;
+
+    eprintln!("True Mean: {}", TARGET_MU);
+    eprintln!("True Standard Deviation: {}", TARGET_SIGMA);
 
     const N_STEPS: usize = 2000;
     const N_PARAMETERS: usize = 1;
@@ -50,5 +53,6 @@ fn test_analytical_normal() -> anyhow::Result<()> {
 
     ess.display_parameter_summaries();
 
+    eprintln!("\n");
     Ok(())
 }

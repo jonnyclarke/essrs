@@ -84,7 +84,7 @@ pub(crate) fn step_out(
         .and(&anchor_vec)
         .and(&direction_vec)
         .for_each(|out, &anchor, &direction| {
-            *out = anchor + direction * nl;
+            *out = anchor + direction * nr;
         });
 
     let mut ll_r = model
@@ -100,7 +100,7 @@ pub(crate) fn step_out(
             .and(&anchor_vec)
             .and(&direction_vec)
             .for_each(|out, &anchor, &direction| {
-                *out = anchor + direction * nl;
+                *out = anchor + direction * nr;
             });
 
         ll_r = model
@@ -130,7 +130,7 @@ pub(crate) fn step_in(
     let mut nl = search_bounds.nl;
     let mut nr = search_bounds.nr;
 
-    let mut shift = rng.random_range(nl..nr);
+    let mut shift: f64 = rng.random_range(nl..=nr);
 
     loop {
         Zip::from(&mut *internal)
@@ -154,6 +154,6 @@ pub(crate) fn step_in(
             nr = shift
         }
 
-        shift = rng.random_range(nl..nr);
+        shift = rng.random_range(nl..=nr);
     }
 }
