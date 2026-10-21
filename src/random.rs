@@ -6,7 +6,7 @@ use rand::{Rng, RngCore};
 /// Given we are running `N_WALKERS` as the ensemble.
 /// Differential move requires two further walkers to define the direction vector.
 /// We sample the first by sampling integers in the range [0, N_WALKERS - 1) and, if the selected index equals our walker's index (given by `not_this`) we add 1 to avoid re-sampling that value.
-pub fn get_rn_not(rng: &mut dyn RngCore, max_index: usize, not_this: usize) -> usize {
+pub(crate) fn get_rn_not(rng: &mut dyn RngCore, max_index: usize, not_this: usize) -> usize {
     let mut random_number: usize = rng.random_range(0..max_index - 1);
 
     if random_number >= not_this {
@@ -18,7 +18,7 @@ pub fn get_rn_not(rng: &mut dyn RngCore, max_index: usize, not_this: usize) -> u
 
 /// This is the follow up function needed to sample the 2nd walker for construction of the direction vector.
 /// The logic is identical aside from we now provide two indexes to avoid by virtue of adding 1 to the result.
-pub fn get_rn_not_or(
+pub(crate) fn get_rn_not_or(
     rng: &mut dyn RngCore,
     max_index: usize,
     not_this: usize,

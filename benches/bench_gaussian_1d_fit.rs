@@ -3,7 +3,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use essrs::{
     chains::static_buffer::StaticBuffer,
     ess::EnsembleSliceSampler,
-    log_likelihood::normal_1d::{GaussianLl1dDataErrors, helper_generate_random_gaussian_points},
+    log_likelihood::{helper_generate_random_gaussian_points, normal_1d::GaussianLl1dDataErrors},
     moves::move_handlers::differential_handler::DifferentialHandler,
 };
 use ndarray::{Array2, array};
