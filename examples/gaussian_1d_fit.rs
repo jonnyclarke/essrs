@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use essrs::moves::move_handlers::differential_handler::DifferentialHandler;
+use essrs::moves::differential_move::DifferentialMove;
 use essrs::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
@@ -51,10 +51,10 @@ fn main() -> anyhow::Result<()> {
     const N_WALKERS: usize = 100; // number of walkers used simultaneously NOTE: > 2 x N_PARAMETERS
 
     let chains = StaticBuffer::new(N_STEPS, N_WALKERS, N_PARAMETERS);
-    let move_handler = DifferentialHandler::new();
+    let move_handler = DifferentialMove::new();
     let model = GaussianLl1dDataErrors::new(&data);
     let mut ess =
-        EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, GaussianLl1dDataErrors>::new(
+        EnsembleSliceSampler::<StaticBuffer, DifferentialMove, GaussianLl1dDataErrors>::new(
             N_STEPS,
             N_WALKERS,
             N_PARAMETERS,
@@ -68,7 +68,9 @@ fn main() -> anyhow::Result<()> {
     let start_time = Instant::now();
 
     ess.initialise(start.view())?; // compute log-likelihood of initial positions
-    ess.run_sampler(N_BURN_IN)?; // run sampler
+    ess.run_burn_in(N_BURN_IN, &DifferentialMove::new())
+        .unwrap();
+    ess.run_sampler().unwrap(); // run sampler
 
     let duration = start_time.elapsed();
     println!("sampler has taken {} seconds", duration.as_secs());

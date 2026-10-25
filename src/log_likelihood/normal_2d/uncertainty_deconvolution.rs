@@ -277,7 +277,7 @@ mod tests {
     }
 
     #[test]
-    fn test_columnar_transform_physical_to_internal() -> anyhow::Result<()> {
+    fn test_columnar_transform_circularity() -> anyhow::Result<()> {
         let d = array![[1.1, 1.2, 0.1, 0.2, 0.0]];
 
         let physical = array![
@@ -318,6 +318,10 @@ mod tests {
         ];
 
         assert_relative_eq!(internal, target, epsilon = 1e-8);
+
+        gmm.columnar_transform_internal_to_physical(target.view(), internal.view_mut())?;
+
+        assert_relative_eq!(internal, physical, epsilon = 1e-8);
 
         Ok(())
     }

@@ -66,21 +66,21 @@ pub mod helpers {
     use crate::{
         chains::static_buffer::StaticBuffer, ess::EnsembleSliceSampler,
         log_likelihood::normal_1d::GaussianLl1dDataErrors,
-        moves::move_handlers::differential_handler::DifferentialHandler,
+        moves::differential_move::DifferentialMove,
     };
 
     // const MAX_N_STEPS: usize = 2;
 
     pub fn build_test_ess()
-    -> EnsembleSliceSampler<StaticBuffer, DifferentialHandler, GaussianLl1dDataErrors> {
+    -> EnsembleSliceSampler<StaticBuffer, DifferentialMove, GaussianLl1dDataErrors> {
         let data = array![[0.0_f64, 0.0_f64]];
 
         let chains = StaticBuffer::new(2, 4, 2);
-        let move_handler = DifferentialHandler::new();
+        let move_handler = DifferentialMove::new();
         let model = GaussianLl1dDataErrors::new(&data);
 
         let ess =
-            EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, GaussianLl1dDataErrors>::new(
+            EnsembleSliceSampler::<StaticBuffer, DifferentialMove, GaussianLl1dDataErrors>::new(
                 2,
                 4,
                 2,

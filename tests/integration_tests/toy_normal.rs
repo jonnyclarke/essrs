@@ -3,7 +3,7 @@ use essrs::{
     chains::static_buffer::StaticBuffer,
     ess::EnsembleSliceSampler,
     log_likelihood::toy::normal::AnalyticNormalToyLogL, // Likelihood model for 1d Gaussian data with errors
-    moves::move_handlers::differential_handler::DifferentialHandler,
+    moves::differential_move::DifferentialMove,
 };
 use ndarray::array;
 
@@ -21,11 +21,11 @@ fn test_analytical_normal() -> anyhow::Result<()> {
     const N_WALKERS: usize = 10;
 
     let chains = StaticBuffer::new(N_STEPS, N_WALKERS, N_PARAMETERS);
-    let move_handler = DifferentialHandler::new();
+    let move_handler = DifferentialMove::new();
     let model = AnalyticNormalToyLogL::new(TARGET_MU, TARGET_SIGMA);
 
     let mut ess =
-        EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, AnalyticNormalToyLogL>::new(
+        EnsembleSliceSampler::<StaticBuffer, DifferentialMove, AnalyticNormalToyLogL>::new(
             N_STEPS,
             N_WALKERS,
             N_PARAMETERS,
@@ -49,7 +49,8 @@ fn test_analytical_normal() -> anyhow::Result<()> {
 
     ess.initialise(start.view())?;
 
-    ess.run_sampler(2000)?;
+    ess.run_burn_in(2000, &DifferentialMove::new()).unwrap();
+    ess.run_sampler().unwrap(); // run sampler
 
     ess.display_parameter_summaries();
 

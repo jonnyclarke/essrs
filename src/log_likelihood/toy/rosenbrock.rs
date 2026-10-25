@@ -24,3 +24,20 @@ impl LogLikelihoodModel for AnalyticRosenbrockToyLogL {
         Ok(ll)
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use ndarray::array;
+
+    use super::*;
+
+    #[test]
+    fn test_initialisation() -> anyhow::Result<()> {
+        let ll_rosenbrock = AnalyticRosenbrockToyLogL::new(1.0, 3.0);
+        let parameters = array![1.0, 1.0];
+        let _ = ll_rosenbrock.log_likelihood(parameters.view());
+
+        Ok(())
+    }
+}

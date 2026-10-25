@@ -4,7 +4,7 @@ use essrs::{
     ess::EnsembleSliceSampler,
     log_likelihood::helper_generate_random_gaussian_points, // helper function to generate random gaussian points
     log_likelihood::normal_1d::GaussianLl1dDataErrors, // Likelihood model for 1d Gaussian data with errors
-    moves::move_handlers::differential_handler::DifferentialHandler,
+    moves::differential_move::DifferentialMove,
 };
 use ndarray::array;
 
@@ -18,11 +18,11 @@ fn test_normal_distribution_with_errors() -> anyhow::Result<()> {
     const N_WALKERS: usize = 12;
 
     let chains = StaticBuffer::new(N_STEPS, N_WALKERS, N_PARAMETERS);
-    let move_handler = DifferentialHandler::new();
+    let move_handler = DifferentialMove::new();
     let model = GaussianLl1dDataErrors::new(&data);
 
     let mut ess =
-        EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, GaussianLl1dDataErrors>::new(
+        EnsembleSliceSampler::<StaticBuffer, DifferentialMove, GaussianLl1dDataErrors>::new(
             N_STEPS,
             N_WALKERS,
             N_PARAMETERS,
@@ -48,7 +48,8 @@ fn test_normal_distribution_with_errors() -> anyhow::Result<()> {
 
     ess.initialise(start.view())?;
 
-    ess.run_sampler(200)?;
+    ess.run_burn_in(200, &DifferentialMove::new()).unwrap();
+    ess.run_sampler().unwrap(); // run sampler
 
     ess.display_parameter_summaries();
 

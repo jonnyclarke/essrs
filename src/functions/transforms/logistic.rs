@@ -27,6 +27,14 @@ pub fn logistic_log_jacobian(x: f64) -> Result<(f64, f64), TransformError> {
     Ok((y, ll))
 }
 
+#[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
+/// Function to compute logistic transform and log-jacobian warp.
+///
+/// Applies transform inplace.
+///
+/// $$
+/// \frac{dy}{dx} = \frac{e^{-x}}{\left( 1 + e^{-x} \right)^2}
+/// $$
 pub fn logistic_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> Result<(), TransformError> {
     let (y, lj) = logistic_log_jacobian(*x)?;
 
@@ -76,13 +84,14 @@ mod tests {
         ((-1.2345_f64).exp() / (1.0 + (-1.2345_f64).exp()).powi(2)).ln()
     )]
     fn test_logistic_log_jacobian(
-        #[case] x: f64,
-        #[case] target_y: f64,
+        #[case] mut x: f64,
+        #[case] target_x: f64,
         #[case] target_ll: f64,
     ) -> anyhow::Result<()> {
-        let (y, ll) = logistic_log_jacobian(x)?;
+        let mut ll = 0.0;
+        logistic_log_jacobian_inplace(&mut x, &mut ll)?;
 
-        assert_eq!(y, target_y);
+        assert_eq!(x, target_x);
         assert_eq!(ll, target_ll);
 
         Ok(())

@@ -1,0 +1,144 @@
+//! This is the core jump algorithm used in conjunction with ensemble slice sampling.
+//!
+//! The core algorithm is as follows:
+//! | Walker `i` starts with parameter vector v0 and a likelihood l0.
+//! | We sample two additional and different parameter vectors, v1 and v2.
+//! | The difference between these two vectors then defines a direction vector: d = v2 - v1
+//! | We sample a random number in range 0 to 1 and take logarithm; this defines the acceptance boundary l_b = l0 + ln(rn)
+//! | We step out; we progressively test points in both directions, d and -d, from v0 until the log-likelihood falls below the acceptance boundary
+//! | We step in; we randomly sample within the range [v0 - n * d, v0 + m * d] until, at (v0', l0') the log-likelihood is greater than the acceptance threshold.
+//! | The new point v0', and corresponding likelihood, l0', are stored as next element on the MCMC walk.
+
+use ndarray::{Array1, ArrayViewMut1, Zip};
+use rayon::prelude::*;
+
+use crate::{
+    log_likelihood::LogLikelihoodModel,
+    moves::EnsembleMove,
+    random::{get_rn_not, get_rn_not_or},
+    slice::{step_in, step_out},
+    state::WalkerState,
+};
+#[derive(Debug, PartialEq)]
+pub struct DifferentialMove {}
+
+impl DifferentialMove {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Default for DifferentialMove {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl DifferentialMove {
+    fn get_vector(
+        &self,
+        state: &WalkerState,
+        l: usize,
+        r: usize,
+        direction: &mut ArrayViewMut1<f64>,
+    ) {
+        Zip::from(&mut *direction)
+            .and(&state.get_ith_state_vector_view(l))
+            .and(&state.get_ith_state_vector_view(r))
+            .for_each(|out, &left, &right| {
+                *out = left - right;
+            });
+    }
+}
+
+impl EnsembleMove for DifferentialMove {
+    fn jump<L: LogLikelihoodModel + Sync>(
+        &self,
+        _iteration: usize,
+        log_likelihood_model: &L,
+        state: &mut WalkerState,
+    ) -> anyhow::Result<()> {
+        let n_walkers = state.n_walkers();
+
+        let proposals: Vec<anyhow::Result<(Array1<f64>, f64)>> = (0..n_walkers)
+            .into_par_iter()
+            .map(|i| {
+                let mut rng = rand::rng();
+
+                // Each worker owns its own scratch arrays.
+                let mut direction = state.get_ith_state_vector_view(i).to_owned();
+
+                let mut internal = state.get_ith_state_vector_view(i).to_owned();
+                let mut physical = state.get_ith_state_vector_view(i).to_owned();
+
+                let ll_floor = state.get_ith_ll_value(i) + self.get_likelihood_floor(&mut rng);
+
+                let current = state.get_ith_state_vector_view(i);
+
+                let l = get_rn_not(&mut rng, n_walkers, i);
+                let r = get_rn_not_or(&mut rng, n_walkers, i, l);
+
+                self.get_vector(state, l, r, &mut direction.view_mut());
+
+                let search_bounds = step_out(
+                    log_likelihood_model,
+                    current.view(),
+                    direction.view(),
+                    &mut internal.view_mut(),
+                    &mut physical.view_mut(),
+                    ll_floor,
+                )?;
+
+                let log_likelihood = step_in(
+                    &mut rng,
+                    log_likelihood_model,
+                    current.view(),
+                    direction.view(),
+                    search_bounds,
+                    &mut internal.view_mut(),
+                    &mut physical.view_mut(),
+                )?;
+
+                Ok((internal, log_likelihood))
+            })
+            .collect();
+
+        // Commit the results sequentially.
+        for (i, proposal) in proposals.into_iter().enumerate() {
+            let (internal, log_likelihood) = proposal?;
+
+            state.assign_ith_state_vector(i, internal.view());
+            state.assign_ith_ll(i, log_likelihood);
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    // use anyhow;
+    // use approx::assert_relative_eq;
+    // use rstest::rstest;
+    use ndarray::array;
+
+    use super::*;
+    use crate::testing::WalkerStateBuilder;
+
+    #[test]
+    fn test_get_vector() {
+        let state = WalkerStateBuilder::new(3, 1)
+            .set_state_matrix(array![[-1.0], [0.0], [1.0]])
+            .set_ll_vector(array![-1.0, 0.0, 1.0])
+            .swap()
+            .construct();
+
+        let diff_move = DifferentialMove::default();
+
+        let mut direction = array![0.0];
+        diff_move.get_vector(&state, 2, 1, &mut direction.view_mut());
+
+        assert_eq!(direction, array![1.0])
+    }
+}

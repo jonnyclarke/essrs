@@ -8,7 +8,9 @@ use crate::{
         GaussianMixModel2DimUnDeConv, // Likelihood model for 2d Gaussian MixModel data with errors
         N_PARAMETERS_NORMAL_1D,
     },
-    moves::move_handlers::differential_handler::DifferentialHandler,
+    moves::{
+        diffconv_move::DiffConvMove, differential_move::DifferentialMove, hybrid::HybridOneInNMove,
+    },
 };
 
 #[pyfunction]
@@ -31,24 +33,23 @@ pub fn normal_2d_gmm_deconv<'py>(
     let d = data.as_array().to_owned();
 
     let chains = StaticBuffer::new(max_n_steps, n_walkers, n_parameters);
-    let move_handler = DifferentialHandler::new();
+    let move_handler = DifferentialMove::new();
+    let burn_move_handler = HybridOneInNMove::new(DifferentialMove::new(), DiffConvMove::new(), 10);
     let model = GaussianMixModel2DimUnDeConv::new(d, n_components);
 
-    let mut ess = EnsembleSliceSampler::<
-        StaticBuffer,
-        DifferentialHandler,
-        GaussianMixModel2DimUnDeConv,
-    >::new(
-        max_n_steps,
-        n_walkers,
-        n_parameters,
-        chains,
-        move_handler,
-        model,
-    );
+    let mut ess =
+        EnsembleSliceSampler::<StaticBuffer, DifferentialMove, GaussianMixModel2DimUnDeConv>::new(
+            max_n_steps,
+            n_walkers,
+            n_parameters,
+            chains,
+            move_handler,
+            model,
+        );
 
     ess.initialise(initial_conditions.view()).unwrap(); // compute log-likelihood of initial positions
-    ess.run_sampler(n_burn_in).unwrap(); // run sampler
+    ess.run_burn_in(n_burn_in, &burn_move_handler).unwrap();
+    ess.run_sampler().unwrap(); // run sampler
 
     let result = ess.extract_state();
 

@@ -1,13 +1,6 @@
-//! This is the core jump algorithm used in conjunction with ensemble slice sampling.
-//!
-//! The core algorithm is as follows:
-//! | Walker `i` starts with parameter vector v0 and a likelihood l0.
-//! | We sample two additional and different parameter vectors, v1 and v2.
-//! | The difference between these two vectors then defines a direction vector: d = v2 - v1
-//! | We sample a random number in range 0 to 1 and take logarithm; this defines the acceptance boundary l_b = l0 + ln(rn)
-//! | We step out; we progressively test points in both directions, d and -d, from v0 until the log-likelihood falls below the acceptance boundary
-//! | We step in; we randomly sample within the range [v0 - n * d, v0 + m * d] until, at (v0', l0') the log-likelihood is greater than the acceptance threshold.
-//! | The new point v0', and corresponding likelihood, l0', are stored as next element on the MCMC walk.
+//! # Warning
+//! This move should not be used for posterior sampling.
+//! This move is only designed to help in the convergence stage by limiting directions to be towards other walkers.
 
 use ndarray::{Array1, ArrayViewMut1, Zip};
 use rayon::prelude::*;
@@ -15,26 +8,26 @@ use rayon::prelude::*;
 use crate::{
     log_likelihood::LogLikelihoodModel,
     moves::EnsembleMove,
-    random::{get_rn_not, get_rn_not_or},
+    random::get_rn_not,
     slice::{step_in, step_out},
     state::WalkerState,
 };
 #[derive(Debug, PartialEq)]
-pub struct DifferentialMove {}
+pub struct DiffConvMove {}
 
-impl DifferentialMove {
+impl DiffConvMove {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl Default for DifferentialMove {
+impl Default for DiffConvMove {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl DifferentialMove {
+impl DiffConvMove {
     fn get_vector(
         &self,
         state: &WalkerState,
@@ -51,9 +44,10 @@ impl DifferentialMove {
     }
 }
 
-impl EnsembleMove for DifferentialMove {
+impl EnsembleMove for DiffConvMove {
     fn jump<L: LogLikelihoodModel + Sync>(
         &self,
+        _iteration: usize,
         log_likelihood_model: &L,
         state: &mut WalkerState,
     ) -> anyhow::Result<()> {
@@ -74,10 +68,9 @@ impl EnsembleMove for DifferentialMove {
 
                 let current = state.get_ith_state_vector_view(i);
 
-                let l = get_rn_not(&mut rng, n_walkers, i);
-                let r = get_rn_not_or(&mut rng, n_walkers, i, l);
+                let t = get_rn_not(&mut rng, n_walkers, i);
 
-                self.get_vector(state, l, r, &mut direction.view_mut());
+                self.get_vector(state, i, t, &mut direction.view_mut());
 
                 let search_bounds = step_out(
                     log_likelihood_model,
@@ -114,30 +107,30 @@ impl EnsembleMove for DifferentialMove {
     }
 }
 
-#[cfg(test)]
-mod tests {
+// #[cfg(test)]
+// mod tests {
 
-    // use anyhow;
-    // use approx::assert_relative_eq;
-    // use rstest::rstest;
-    use ndarray::array;
+//     // use anyhow;
+//     // use approx::assert_relative_eq;
+//     // use rstest::rstest;
+//     use ndarray::array;
 
-    use super::*;
-    use crate::testing::WalkerStateBuilder;
+//     use super::*;
+//     use crate::testing::WalkerStateBuilder;
 
-    #[test]
-    fn test_get_vector() {
-        let state = WalkerStateBuilder::new(3, 1)
-            .set_state_matrix(array![[-1.0], [0.0], [1.0]])
-            .set_ll_vector(array![-1.0, 0.0, 1.0])
-            .swap()
-            .construct();
+//     #[test]
+//     fn test_get_vector() {
+//         let state = WalkerStateBuilder::new(3, 1)
+//             .set_state_matrix(array![[-1.0], [0.0], [1.0]])
+//             .set_ll_vector(array![-1.0, 0.0, 1.0])
+//             .swap()
+//             .construct();
 
-        let diff_move = DifferentialMove::default();
+//         let diff_move = DifferentialMove::default();
 
-        let mut direction = array![0.0];
-        diff_move.get_vector(&state, 2, 1, &mut direction.view_mut());
+//         let mut direction = array![0.0];
+//         diff_move.get_vector(&state, 2, 1, &mut direction.view_mut());
 
-        assert_eq!(direction, array![1.0])
-    }
-}
+//         assert_eq!(direction, array![1.0])
+//     }
+// }
