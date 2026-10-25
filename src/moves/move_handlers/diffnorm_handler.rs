@@ -44,13 +44,12 @@ impl EnsembleMoveHandler for DiffNormHandler {
         &mut self,
         iteration: usize,
         model: &L,
-        state_i: &WalkerState,
-        state_j: &mut WalkerState,
+        state: &mut WalkerState,
     ) -> anyhow::Result<()> {
         let switch = self.choose_move(iteration);
         match switch {
-            MoveType::Gaussian => self.move_gaussian.jump(model, state_i, state_j)?,
-            MoveType::Differential => self.move_differential.jump(model, state_i, state_j)?,
+            MoveType::Gaussian => self.move_gaussian.jump(model, state)?,
+            MoveType::Differential => self.move_differential.jump(model, state)?,
         }
 
         Ok(())
