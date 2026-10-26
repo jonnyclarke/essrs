@@ -15,6 +15,10 @@ impl AnalyticRosenbrockToyLogL {
 }
 
 impl LogLikelihoodModel for AnalyticRosenbrockToyLogL {
+    fn get_n_parameters(&self) -> usize {
+        2
+    }
+
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let x = parameters[0];
         let y = parameters[1];

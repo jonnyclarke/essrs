@@ -4,7 +4,6 @@
 /// Manages the storage of MCMC chain objects.
 pub mod chains;
 
-/// Main interface for running the MCMC program.
 pub mod ess;
 
 /// Auxillary functions.
