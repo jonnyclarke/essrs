@@ -30,6 +30,10 @@ impl GaussianLl1dDataErrors {
 }
 
 impl LogLikelihoodModel for GaussianLl1dDataErrors {
+    fn get_n_parameters(&self) -> usize {
+        2
+    }
+
     fn columnar_transform_physical_to_internal(
         &self,
         physical: ArrayView2<f64>,

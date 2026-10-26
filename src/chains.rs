@@ -15,6 +15,13 @@ pub enum ChainError {
 
 /// Trait containing all required methods of the chain storage struct.
 pub trait ChainBuffer {
+    /// Return the max number of steps
+    fn get_max_n_steps(&self) -> usize;
+    /// Return the number of walkers
+    fn get_n_walkers(&self) -> usize;
+    /// Return the number of parameters;
+    fn get_n_parameters(&self) -> usize;
+
     /// This takes a 2D array [N- * N-] and places it into the chain storage.
     fn record_state(&mut self, state: &Array2<f64>);
     // Extract the three-dimensional state matrix and output (can have empty buffer!)

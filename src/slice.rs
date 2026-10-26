@@ -37,8 +37,8 @@ pub(crate) struct LikelihoodBounds {
 
 const N_MAX_STEP_OUT_ITERATIONS: usize = 20;
 
-pub(crate) fn step_out(
-    model: &dyn LogLikelihoodModel,
+pub(crate) fn step_out<L: LogLikelihoodModel>(
+    model: &L,
     anchor_vec: ArrayView1<f64>,
     direction_vec: ArrayView1<f64>,
     internal: &mut ArrayViewMut1<f64>, // specifically to avoid many array allocations
@@ -118,9 +118,9 @@ pub(crate) fn step_out(
     })
 }
 
-pub(crate) fn step_in(
-    rng: &mut dyn RngCore,
-    model: &dyn LogLikelihoodModel,
+pub(crate) fn step_in<R: RngCore, L: LogLikelihoodModel>(
+    rng: &mut R,
+    model: &L,
     anchor_vec: ArrayView1<f64>,
     direction_vec: ArrayView1<f64>,
     search_bounds: LikelihoodBounds,

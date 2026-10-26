@@ -28,7 +28,7 @@ pub trait EnsembleMove {
         rng.random_range(0.0_f64..1.0_f64).ln()
     }
 
-    fn jump<L: LogLikelihoodModel>(
+    fn jump<L: LogLikelihoodModel + Sync>(
         &self,
         iteration: usize,
         log_likelihood_model: &L,

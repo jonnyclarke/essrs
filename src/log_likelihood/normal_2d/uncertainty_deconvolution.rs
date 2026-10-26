@@ -96,6 +96,10 @@ impl GaussianMixModel2DimUnDeConv {
 }
 
 impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
+    fn get_n_parameters(&self) -> usize {
+        self.get_n_components() * N_PARAMETERS_NORMAL_1D
+    }
+
     fn columnar_transform_physical_to_internal(
         &self,
         physical: ArrayView2<f64>,

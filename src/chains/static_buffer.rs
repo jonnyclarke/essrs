@@ -1,6 +1,3 @@
-mod final_state;
-mod store_final_positions;
-
 use ndarray::{Array1, Array2, Array3, Axis, s};
 
 use crate::chains::ChainBuffer;
@@ -8,6 +5,10 @@ use crate::chains::ChainBuffer;
 pub struct StaticBuffer {
     chains: Array3<f64>,
     n_stored: usize,
+
+    max_n_steps: usize,
+    n_walkers: usize,
+    n_parameters: usize,
 }
 
 impl StaticBuffer {
@@ -15,11 +16,25 @@ impl StaticBuffer {
         Self {
             chains: Array3::<f64>::zeros((max_n_steps, n_walkers, n_parameters)),
             n_stored: 0,
+
+            max_n_steps,
+            n_walkers,
+            n_parameters,
         }
     }
 }
 
 impl ChainBuffer for StaticBuffer {
+    fn get_max_n_steps(&self) -> usize {
+        self.max_n_steps
+    }
+    fn get_n_parameters(&self) -> usize {
+        self.n_parameters
+    }
+    fn get_n_walkers(&self) -> usize {
+        self.n_walkers
+    }
+
     fn record_state(&mut self, state: &Array2<f64>) {
         let mut slice = self.chains.index_axis_mut(Axis(0), self.n_stored);
         slice.assign(state);
@@ -75,6 +90,7 @@ impl ChainBuffer for StaticBuffer {
 
 #[cfg(test)]
 mod tests {
+
     use ndarray::{Array2, array};
 
     use super::*;

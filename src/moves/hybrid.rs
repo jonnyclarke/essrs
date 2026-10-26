@@ -28,7 +28,7 @@ impl<P: EnsembleMove, S: EnsembleMove> HybridOneInNMove<P, S> {
 }
 
 impl<P: EnsembleMove, S: EnsembleMove> EnsembleMove for HybridOneInNMove<P, S> {
-    fn jump<L: LogLikelihoodModel>(
+    fn jump<L: LogLikelihoodModel + Sync>(
         &self,
         iteration: usize,
         model: &L,

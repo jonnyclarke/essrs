@@ -15,6 +15,10 @@ impl AnalyticNormalToyLogL {
 }
 
 impl LogLikelihoodModel for AnalyticNormalToyLogL {
+    fn get_n_parameters(&self) -> usize {
+        1
+    }
+
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let x = parameters[0];
 

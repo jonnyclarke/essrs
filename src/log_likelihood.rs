@@ -95,6 +95,8 @@ pub enum LogLikelihoodError {
 /// }
 ///
 /// impl LogLikelihoodModel for NormalOneDim {
+///     fn get_n_parameters(&self) -> usize {2}
+///
 ///     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
 ///         let mu = parameters[0];
 ///         let sigma = parameters[1];
@@ -129,6 +131,8 @@ pub enum LogLikelihoodError {
 /// }
 ///
 /// impl LogLikelihoodModel for NormalOneDim {
+///     fn get_n_parameters(&self) -> usize {2}
+///
 ///     fn columnar_transform_physical_to_internal(
 ///         &self,
 ///         physical: ArrayView2<f64>,
@@ -175,6 +179,9 @@ pub enum LogLikelihoodError {
 /// }
 /// ```
 pub trait LogLikelihoodModel: Send + Sync {
+    /// Get the number of parameters required by the model
+    fn get_n_parameters(&self) -> usize;
+
     /// Transform physical phase space to internal
     /// Used when ingesting initial conditions provided by the user
     ///
