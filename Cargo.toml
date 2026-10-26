@@ -52,3 +52,7 @@ python = ["dep:pyo3", "dep:numpy"]
 version = "0.26"
 optional = true
 features = ["extension-module"]
+
+# TODO: enable this option
+#[lints.rust]
+#missing_docs = "deny"

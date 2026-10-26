@@ -57,38 +57,3 @@ pub fn make_test_static_buffer() -> StaticBuffer {
 
     buffer
 }
-
-#[cfg(test)]
-pub mod helpers {
-
-    use ndarray::array;
-
-    use crate::{
-        chains::static_buffer::StaticBuffer, ess::EnsembleSliceSampler,
-        log_likelihood::normal_1d::GaussianLl1dDataErrors,
-        moves::differential_move::DifferentialMove,
-    };
-
-    // const MAX_N_STEPS: usize = 2;
-
-    pub fn build_test_ess()
-    -> EnsembleSliceSampler<StaticBuffer, DifferentialMove, GaussianLl1dDataErrors> {
-        let data = array![[0.0_f64, 0.0_f64]];
-
-        let chains = StaticBuffer::new(2, 4, 2);
-        let move_handler = DifferentialMove::new();
-        let model = GaussianLl1dDataErrors::new(&data);
-
-        let ess =
-            EnsembleSliceSampler::<StaticBuffer, DifferentialMove, GaussianLl1dDataErrors>::new(
-                2,
-                4,
-                2,
-                chains,
-                move_handler,
-                model,
-            );
-
-        ess
-    }
-}

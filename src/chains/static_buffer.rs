@@ -2,22 +2,30 @@ use ndarray::{Array1, Array2, Array3, Axis, s};
 
 use crate::chains::ChainBuffer;
 
+/// Static Buffer
+/// TODO: add log-likelihood storage as well
 pub struct StaticBuffer {
     chains: Array3<f64>,
     n_stored: usize,
 
-    max_n_steps: usize,
+    n_steps: usize,
     n_walkers: usize,
     n_parameters: usize,
 }
 
 impl StaticBuffer {
-    pub fn new(max_n_steps: usize, n_walkers: usize, n_parameters: usize) -> Self {
+    /// Generate new static buffer
+    ///
+    /// # Arguments
+    /// * n_steps: the number of steps the sampler will take
+    /// * n_walkers: the number of walkers
+    /// * n_parameters: the number of parameters in the likelihood model
+    pub fn new(n_steps: usize, n_walkers: usize, n_parameters: usize) -> Self {
         Self {
-            chains: Array3::<f64>::zeros((max_n_steps, n_walkers, n_parameters)),
+            chains: Array3::<f64>::zeros((n_steps, n_walkers, n_parameters)),
             n_stored: 0,
 
-            max_n_steps,
+            n_steps,
             n_walkers,
             n_parameters,
         }
@@ -25,8 +33,8 @@ impl StaticBuffer {
 }
 
 impl ChainBuffer for StaticBuffer {
-    fn get_max_n_steps(&self) -> usize {
-        self.max_n_steps
+    fn get_n_steps(&self) -> usize {
+        self.n_steps
     }
     fn get_n_parameters(&self) -> usize {
         self.n_parameters
@@ -153,5 +161,13 @@ mod tests {
     fn test_display_parameter_summaries() {
         let buffer = make_test_static_buffer();
         buffer.display_parameter_summaries(2);
+    }
+
+    #[test]
+    fn test_shape_information() {
+        let buffer = make_test_static_buffer();
+        assert_eq!(buffer.get_n_steps(), 2);
+        assert_eq!(buffer.get_n_walkers(), 4);
+        assert_eq!(buffer.get_n_parameters(), 2);
     }
 }

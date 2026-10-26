@@ -7,7 +7,7 @@ pub mod gaussian_move;
 pub mod hybrid;
 
 use anyhow;
-use rand::{Rng, RngCore};
+use rand::{Rng, rngs::StdRng};
 
 use crate::{log_likelihood::LogLikelihoodModel, state::WalkerState};
 
@@ -23,15 +23,26 @@ pub enum HybridMoveType {
     DiffNorm,
 }
 
-pub trait EnsembleMove {
-    fn get_likelihood_floor<R: RngCore>(&self, rng: &mut R) -> f64 {
-        rng.random_range(0.0_f64..1.0_f64).ln()
-    }
+pub fn compute_likelihood_floor(ll: f64, rng: &mut StdRng) -> f64 {
+    ll + rng.random_range(0.0_f64..1.0_f64).ln()
+}
 
-    fn jump<L: LogLikelihoodModel + Sync>(
+pub trait EnsembleMove {
+    fn jump<L>(
         &self,
         iteration: usize,
         log_likelihood_model: &L,
+        state: &mut WalkerState,
+    ) -> anyhow::Result<()>
+    where
+        L: LogLikelihoodModel + Sync + ?Sized;
+}
+
+pub trait DynEnsembleMove: Send + Sync {
+    fn jump_dyn(
+        &self,
+        iteration: usize,
+        log_likelihood_model: &(dyn LogLikelihoodModel + Sync),
         state: &mut WalkerState,
     ) -> anyhow::Result<()>;
 }

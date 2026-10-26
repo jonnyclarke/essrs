@@ -2,16 +2,328 @@
 //!
 //! This is the primary API to run the MCMC process.
 
-mod builder;
-mod class;
-pub use builder::EnsembleSliceSamplerBuilder;
-pub use class::EnsembleSliceSampler;
+use ndarray::{Array3, ArrayView2};
 use thiserror::Error;
 
-use crate::log_likelihood::LogLikelihoodError;
+use crate::{
+    chains::{ChainBuffer, static_buffer::StaticBuffer},
+    log_likelihood::{LogLikelihoodError, LogLikelihoodModel, WrappedLogLikelihoodModel},
+    moves::{DynEnsembleMove, EnsembleMove},
+    state::WalkerState,
+};
 
+/// Error enum for the EnsembleSliceSampler struct
 #[derive(Debug, Error)]
 pub enum InitialisationError {
+    /// initialisation fails due to invalid log-likelihood
     #[error("initialisation of initial state has failed: {0}")]
     InvalidLogLikelihood(#[from] LogLikelihoodError),
+}
+
+/// Ensemble Slice Sampler Object.
+///
+/// This struct manages all the internals of the MCMC fit.
+/// Type is generic over:
+/// * implementor of 'MoveHandler' trait: controls how the MCMC makes proposals
+/// * implementor of 'LogLikelihoodModel' trait: provides log-likelihood computation
+pub struct EnsembleSliceSampler {
+    /// the maximum number of steps for which to run the MCMC
+    n_steps: usize,
+    /// the number of walkers in the MCMC
+    /// tradeoff is that more walkers provide better exploration but increase computational cost
+    n_walkers: usize,
+    /// number of parameters being fitted
+    n_parameters: usize,
+
+    /// chain storage object
+    chains: StaticBuffer,
+
+    /// walker state: includes 'current' and 'next'
+    state: WalkerState,
+    // /// move handler object
+    // move_handler: M,
+    // /// log-likelihood object
+    // /// this owns the data being fitted making 'EnsembleSliceSampler' generic over data
+    // model: L,
+}
+
+impl EnsembleSliceSampler {
+    /// Generate a new EnsembleSliceSampler object
+    ///
+    /// # Arguments
+    /// * n_steps: the number of steps the sampler will take
+    /// * n_walkers: the number of walkers used for parallel sampling
+    /// * n_parameters: the number of parameters in the likelihood model
+    pub fn new(n_steps: usize, n_walkers: usize, n_parameters: usize) -> Self {
+        let required_walkers = (n_parameters * 2).max(3);
+        assert!(n_walkers >= required_walkers);
+
+        Self {
+            n_steps,
+            n_walkers,
+            n_parameters,
+
+            chains: StaticBuffer::new(n_steps, n_walkers, n_parameters),
+            state: WalkerState::new(n_walkers, n_parameters),
+        }
+    }
+
+    /// Calls state-buffer swap which flips current and next memory locations
+    pub fn accept_proposed_state(&mut self) {
+        self.state.swap();
+    }
+
+    /// Wrapper function to call the chain based function displaying parameter summaries
+    pub fn display_parameter_summaries(&self) {
+        self.chains
+            .display_parameter_summaries(self.n_parameters as i32);
+    }
+
+    /// Extract full state
+    ///
+    /// This wraps the chain buffer object's 'extract_state' function
+    pub fn extract_state(&self) -> Array3<f64> {
+        self.chains.extract_state()
+    }
+
+    /// Initialise from physical initial conditions
+    ///
+    /// # Arguments:
+    /// * model: log-likelihood model
+    /// * physical: Array2 object [n_walker, n_parameter] containing initial conditions in physical parameter space
+    pub fn initialise<L>(
+        &mut self,
+        model: &L,
+        physical: ArrayView2<f64>,
+    ) -> Result<(), InitialisationError>
+    where
+        L: LogLikelihoodModel + ?Sized,
+    {
+        let mut internal = physical.to_owned();
+
+        model.wrapped_columnar_transform_physical_to_internal(physical, internal.view_mut())?;
+
+        // this is used simply to pass to log-likelihood in case we need to report an error
+        // TODO: can get rid of this allocation?
+        let mut physical = self.state.get_ith_state_vector_view(0).to_owned();
+
+        for i in 0..self.n_walkers {
+            self.state.assign_ith_ll(
+                i,
+                model.wrapped_log_likelihood(internal.row(i), &mut physical.view_mut())?,
+            )
+        }
+
+        self.state.assign_state_matrix(internal.view());
+
+        // we have been working with next. swap next -> current
+        self.state.swap();
+
+        Ok(())
+    }
+
+    pub fn initialise_dyn(
+        &mut self,
+        model: &dyn LogLikelihoodModel,
+        physical: ArrayView2<f64>,
+    ) -> Result<(), InitialisationError> {
+        self.initialise(model, physical)
+    }
+
+    /// Run burn in phase to converge walkers to posterior probability region
+    pub fn run_burn_in<L, M>(
+        &mut self,
+        model: &L,
+        burn_move_handler: &M,
+        n_burn_in: usize,
+    ) -> anyhow::Result<()>
+    where
+        L: LogLikelihoodModel + ?Sized,
+        M: EnsembleMove + ?Sized,
+    {
+        for iteration in 1..=n_burn_in {
+            burn_move_handler.jump(iteration, model, &mut self.state)?;
+            self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
+        }
+
+        Ok(())
+    }
+
+    pub fn run_burn_in_dyn(
+        &mut self,
+        model: &dyn LogLikelihoodModel,
+        burn_move_handler: &dyn DynEnsembleMove,
+        n_burn_in: usize,
+    ) -> anyhow::Result<()> {
+        for iteration in 1..=n_burn_in {
+            burn_move_handler.jump_dyn(iteration, model, &mut self.state)?;
+            self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
+        }
+
+        Ok(())
+    }
+    /// Run the MCMC sampler
+    ///
+    /// # Arguments
+    /// * n_burn_in: the number of iterations to allow walker convergence prior to storing samples
+    pub fn run_sampler<L: LogLikelihoodModel, M: EnsembleMove>(
+        &mut self,
+        model: &L,
+        move_handler: &M,
+    ) -> anyhow::Result<()> {
+        for iteration in 1..=self.n_steps {
+            move_handler.jump(iteration, model, &mut self.state)?;
+            self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
+
+            let internal = self.state.get_state_matrix_view();
+            let mut physical = internal.to_owned();
+
+            model.wrapped_columnar_transform_internal_to_physical(internal, physical.view_mut())?;
+            self.chains.record_state(&physical);
+        }
+
+        Ok(())
+    }
+
+    ///TODO: remove copy-paste artifacts where possible
+    pub fn run_sampler_dyn(
+        &mut self,
+        model: &dyn LogLikelihoodModel,
+        move_handler: &dyn DynEnsembleMove,
+    ) -> anyhow::Result<()> {
+        for iteration in 1..=self.n_steps {
+            move_handler.jump_dyn(iteration, model, &mut self.state)?;
+            self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
+
+            let internal = self.state.get_state_matrix_view();
+            let mut physical = internal.to_owned();
+
+            model.wrapped_columnar_transform_internal_to_physical(internal, physical.view_mut())?;
+            self.chains.record_state(&physical);
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests_ess {
+    use anyhow;
+    use approx::assert_relative_eq;
+    use ndarray::array;
+
+    use super::*;
+    use crate::{
+        functions::transforms::softplus::softplus_inverse,
+        log_likelihood::f_scientific::GaussianLl1dDataErrors,
+    };
+
+    #[test]
+    fn test_initialise() -> anyhow::Result<()> {
+        let data = array![[0.0_f64, 0.0_f64]];
+        let model = GaussianLl1dDataErrors::new(&data);
+
+        let mut ess = EnsembleSliceSampler::new(2, 4, 2);
+
+        let physical = array![
+            [0.0_f64, 1.0_f64],
+            [1.0_f64, 1.0_f64],
+            [-1.0_f64, 1.0_f64],
+            [2.0_f64, 1.0_f64]
+        ];
+        ess.initialise(&model, physical.view())?;
+
+        let expected_ll = array![
+            (softplus_inverse(1.0_f64)? - 1.0)
+                + (0.0_f64.exp() / (2.0 * std::f64::consts::PI).sqrt()).ln(),
+            (softplus_inverse(1.0_f64)? - 1.0)
+                + ((-0.5_f64).exp() / (2.0 * std::f64::consts::PI).sqrt()).ln(),
+            (softplus_inverse(1.0_f64)? - 1.0)
+                + ((-0.5_f64).exp() / (2.0 * std::f64::consts::PI).sqrt()).ln(),
+            (softplus_inverse(1.0_f64)? - 1.0)
+                + ((-2.0_f64).exp() / (2.0 * std::f64::consts::PI).sqrt()).ln(),
+        ];
+
+        for (computed, expected) in ess
+            .state
+            .get_ll_vector_view()
+            .iter()
+            .zip(expected_ll.iter())
+        {
+            assert_relative_eq!(computed, expected, epsilon = 1e-6);
+        }
+
+        let true_data_state = array![
+            [0.0_f64, softplus_inverse(1.0_f64)?],
+            [1.0_f64, softplus_inverse(1.0_f64)?],
+            [-1.0_f64, softplus_inverse(1.0_f64)?],
+            [2.0_f64, softplus_inverse(1.0_f64)?]
+        ];
+        assert_relative_eq!(
+            true_data_state,
+            ess.state.get_state_matrix_view(),
+            epsilon = 1e-6
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_initialise_dyn() -> anyhow::Result<()> {
+        let data = array![[0.0_f64, 0.0_f64]];
+        let model = GaussianLl1dDataErrors::new(&data);
+
+        let mut ess = EnsembleSliceSampler::new(2, 4, 2);
+
+        let physical = array![
+            [0.0_f64, 1.0_f64],
+            [1.0_f64, 1.0_f64],
+            [-1.0_f64, 1.0_f64],
+            [2.0_f64, 1.0_f64]
+        ];
+        ess.initialise_dyn(&model, physical.view())?;
+
+        let expected_ll = array![
+            (softplus_inverse(1.0_f64)? - 1.0)
+                + (0.0_f64.exp() / (2.0 * std::f64::consts::PI).sqrt()).ln(),
+            (softplus_inverse(1.0_f64)? - 1.0)
+                + ((-0.5_f64).exp() / (2.0 * std::f64::consts::PI).sqrt()).ln(),
+            (softplus_inverse(1.0_f64)? - 1.0)
+                + ((-0.5_f64).exp() / (2.0 * std::f64::consts::PI).sqrt()).ln(),
+            (softplus_inverse(1.0_f64)? - 1.0)
+                + ((-2.0_f64).exp() / (2.0 * std::f64::consts::PI).sqrt()).ln(),
+        ];
+
+        for (computed, expected) in ess
+            .state
+            .get_ll_vector_view()
+            .iter()
+            .zip(expected_ll.iter())
+        {
+            assert_relative_eq!(computed, expected, epsilon = 1e-6);
+        }
+
+        let true_data_state = array![
+            [0.0_f64, softplus_inverse(1.0_f64)?],
+            [1.0_f64, softplus_inverse(1.0_f64)?],
+            [-1.0_f64, softplus_inverse(1.0_f64)?],
+            [2.0_f64, softplus_inverse(1.0_f64)?]
+        ];
+        assert_relative_eq!(
+            true_data_state,
+            ess.state.get_state_matrix_view(),
+            epsilon = 1e-6
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_swap_wrapper() -> anyhow::Result<()> {
+        let mut ess = EnsembleSliceSampler::new(2, 4, 2);
+
+        ess.accept_proposed_state();
+
+        Ok(())
+    }
 }

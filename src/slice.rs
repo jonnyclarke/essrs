@@ -37,7 +37,21 @@ pub(crate) struct LikelihoodBounds {
 
 const N_MAX_STEP_OUT_ITERATIONS: usize = 20;
 
-pub(crate) fn step_out<L: LogLikelihoodModel>(
+fn parameter_proposal(
+    internal: &mut ArrayViewMut1<f64>,
+    anchor: ArrayView1<f64>,
+    direction: ArrayView1<f64>,
+    n: f64,
+) {
+    Zip::from(internal)
+        .and(&anchor)
+        .and(&direction)
+        .for_each(|out, &anchor, &direction| {
+            *out = anchor + direction * n;
+        });
+}
+
+pub(crate) fn step_out<L: LogLikelihoodModel + ?Sized>(
     model: &L,
     anchor_vec: ArrayView1<f64>,
     direction_vec: ArrayView1<f64>,
@@ -49,13 +63,7 @@ pub(crate) fn step_out<L: LogLikelihoodModel>(
     let mut nr = 1.0;
 
     // Left
-    // let mut params = &anchor_vec + &direction_vec * nl;
-    Zip::from(&mut *internal)
-        .and(&anchor_vec)
-        .and(&direction_vec)
-        .for_each(|out, &anchor, &direction| {
-            *out = anchor + direction * nl;
-        });
+    parameter_proposal(internal, anchor_vec, direction_vec, nl);
 
     let mut ll_l = model
         .wrapped_log_likelihood(internal.view(), physical)
@@ -66,12 +74,7 @@ pub(crate) fn step_out<L: LogLikelihoodModel>(
     while ll_l > ll_floor && il <= N_MAX_STEP_OUT_ITERATIONS {
         nl *= 2.0; // multiple by 2 to expand faster as the fall-in is also binary-tree reduction
 
-        Zip::from(&mut *internal)
-            .and(&anchor_vec)
-            .and(&direction_vec)
-            .for_each(|out, &anchor, &direction| {
-                *out = anchor + direction * nl;
-            });
+        parameter_proposal(internal, anchor_vec, direction_vec, nl);
 
         ll_l = model
             .wrapped_log_likelihood(internal.view(), physical)
@@ -80,12 +83,7 @@ pub(crate) fn step_out<L: LogLikelihoodModel>(
     }
 
     // Right
-    Zip::from(&mut *internal)
-        .and(&anchor_vec)
-        .and(&direction_vec)
-        .for_each(|out, &anchor, &direction| {
-            *out = anchor + direction * nr;
-        });
+    parameter_proposal(internal, anchor_vec, direction_vec, nr);
 
     let mut ll_r = model
         .wrapped_log_likelihood(internal.view(), physical)
@@ -96,12 +94,7 @@ pub(crate) fn step_out<L: LogLikelihoodModel>(
     while ll_r > ll_floor && ir <= N_MAX_STEP_OUT_ITERATIONS {
         nr *= 2.0;
 
-        Zip::from(&mut *internal)
-            .and(&anchor_vec)
-            .and(&direction_vec)
-            .for_each(|out, &anchor, &direction| {
-                *out = anchor + direction * nr;
-            });
+        parameter_proposal(internal, anchor_vec, direction_vec, nr);
 
         ll_r = model
             .wrapped_log_likelihood(internal.view(), physical)
@@ -118,7 +111,7 @@ pub(crate) fn step_out<L: LogLikelihoodModel>(
     })
 }
 
-pub(crate) fn step_in<R: RngCore, L: LogLikelihoodModel>(
+pub(crate) fn step_in<R: RngCore, L: LogLikelihoodModel + ?Sized>(
     rng: &mut R,
     model: &L,
     anchor_vec: ArrayView1<f64>,
@@ -133,12 +126,7 @@ pub(crate) fn step_in<R: RngCore, L: LogLikelihoodModel>(
     let mut shift: f64 = rng.random_range(nl..=nr);
 
     loop {
-        Zip::from(&mut *internal)
-            .and(&anchor_vec)
-            .and(&direction_vec)
-            .for_each(|out, &anchor, &direction| {
-                *out = anchor + direction * shift;
-            });
+        parameter_proposal(internal, anchor_vec, direction_vec, shift);
 
         let ll = model
             .wrapped_log_likelihood(internal.view(), physical)
@@ -155,5 +143,51 @@ pub(crate) fn step_in<R: RngCore, L: LogLikelihoodModel>(
         }
 
         shift = rng.random_range(nl..=nr);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use ndarray::array;
+
+    use super::*;
+    use crate::{
+        functions::likelihood::log_normalised_gaussian,
+        log_likelihood::f_toy::AnalyticNormalToyLogL,
+    };
+
+    fn test_ll() -> AnalyticNormalToyLogL {
+        AnalyticNormalToyLogL::new(0.0, 1.0)
+    }
+
+    #[test]
+    fn test_step_out() -> anyhow::Result<()> {
+        let model = test_ll();
+
+        let anchor = array![0.0];
+        let direction = array![0.3];
+
+        let mut internal = array![0.0];
+        let mut physical = array![0.0];
+
+        let ll_floor: f64 = log_normalised_gaussian(1.0, 0.0, 1.0);
+
+        let bounds = step_out(
+            &model,
+            anchor.view(),
+            direction.view(),
+            &mut internal.view_mut(),
+            &mut physical.view_mut(),
+            ll_floor,
+        )?;
+
+        assert_eq!(bounds.nl, -4.0);
+        assert_eq!(bounds.nr, 4.0);
+        assert_eq!(bounds.ll_floor, ll_floor);
+        assert_eq!(bounds._ll_l, log_normalised_gaussian(-1.2, 0.0, 1.0));
+        assert_eq!(bounds._ll_r, log_normalised_gaussian(1.2, 0.0, 1.0));
+
+        Ok(())
     }
 }

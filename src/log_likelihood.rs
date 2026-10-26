@@ -10,18 +10,15 @@
 //! We therefore define two additional routines here, the default for which are to do nothing at all.
 //! The first is to apply the inverse transformation to the initial conditions.
 //! The second is to apply the transformation
-pub mod toy;
+pub mod f_scientific;
+pub mod f_toy;
 
 mod wrapper;
 pub(crate) use wrapper::WrappedLogLikelihoodModel;
 
 mod helpers;
-pub use helpers::helper_generate_random_gaussian_points;
-
-pub mod normal_1d;
-pub mod normal_2d;
-
 use anyhow;
+pub use helpers::helper_generate_random_gaussian_points;
 use ndarray::{Array1, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
 use thiserror::Error;
 
