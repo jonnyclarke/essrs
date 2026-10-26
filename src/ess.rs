@@ -10,7 +10,7 @@ use ndarray::Array3;
 use crate::{
     chains::ChainBuffer,
     log_likelihood::{LogLikelihoodModel, WrappedLogLikelihoodModel},
-    moves::EnsembleMoveHandler,
+    moves::EnsembleMove,
     state::WalkerState,
 };
 
@@ -21,7 +21,7 @@ use crate::{
 /// * implementor of 'ChainBuffer' trait: used to store MCMC history
 /// * implementor of 'MoveHandler' trait: controls how the MCMC makes proposals
 /// * implementor of 'LogLikelihoodModel' trait: provides log-likelihood computation
-pub struct EnsembleSliceSampler<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> {
+pub struct EnsembleSliceSampler<C: ChainBuffer, M: EnsembleMove, L: LogLikelihoodModel> {
     /// the maximum number of steps for which to run the MCMC
     max_n_steps: usize,
     /// the number of walkers in the MCMC
@@ -42,30 +42,39 @@ pub struct EnsembleSliceSampler<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLi
     state: WalkerState,
 }
 
-impl<C: ChainBuffer, M: EnsembleMoveHandler, L: LogLikelihoodModel> EnsembleSliceSampler<C, M, L> {
+impl<C: ChainBuffer, M: EnsembleMove, L: LogLikelihoodModel> EnsembleSliceSampler<C, M, L> {
     /// Calls state-buffer swap which flips current and next memory locations
     pub fn accept_proposed_state(&mut self) {
         self.state.swap();
     }
 
+    pub fn run_burn_in<T: EnsembleMove>(
+        &mut self,
+        n_burn_in: usize,
+        burn_move_handler: &T,
+    ) -> anyhow::Result<()> {
+        for iteration in 1..=n_burn_in {
+            burn_move_handler.jump(iteration, &self.model, &mut self.state)?;
+            self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
+        }
+
+        Ok(())
+    }
     /// Run the MCMC sampler
     ///
     /// # Arguments
     /// * n_burn_in: the number of iterations to allow walker convergence prior to storing samples
-    ///
-    /// # TODO
-    /// * Upgrade ChainBuffer trait to provide a method to update itself
-    pub fn run_sampler(&mut self, n_burn_in: usize) -> anyhow::Result<()> {
-        // we allow burn in to eliminate effect on chains of the starting point
-        for iteration in 1..=n_burn_in {
-            self.move_handler
-                .distribute_jump(iteration, &self.model, &mut self.state)?;
-            self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
-        }
+    pub fn run_sampler(&mut self) -> anyhow::Result<()> {
+        // // we allow burn in to eliminate effect on chains of the starting point
+        // for iteration in 1..=n_burn_in {
+        //     self.move_handler
+        //         .distribute_jump(iteration, &self.model, &mut self.state)?;
+        //     self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
+        // }
 
         for iteration in 1..=self.max_n_steps {
             self.move_handler
-                .distribute_jump(iteration, &self.model, &mut self.state)?;
+                .jump(iteration, &self.model, &mut self.state)?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
 
             let internal = self.state.get_state_matrix_view();

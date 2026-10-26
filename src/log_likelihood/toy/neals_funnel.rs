@@ -50,3 +50,20 @@ impl LogLikelihoodModel for AnalyticNealsFunnelToyLogL {
         Ok(ll)
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use ndarray::array;
+
+    use super::*;
+
+    #[test]
+    fn test_initialisation() -> anyhow::Result<()> {
+        let ll_neals_funnel = AnalyticNealsFunnelToyLogL::default();
+        let parameters = array![1.0, 1.0];
+        let _ = ll_neals_funnel.log_likelihood(parameters.view());
+
+        Ok(())
+    }
+}

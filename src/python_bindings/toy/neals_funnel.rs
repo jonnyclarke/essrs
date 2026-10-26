@@ -1,7 +1,7 @@
 use numpy::{PyArray3, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use crate::moves::move_handlers::differential_handler::DifferentialHandler;
+use crate::moves::differential_move::DifferentialMove;
 use crate::{
     chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
     ess::EnsembleSliceSampler,           // ensemble slice sampler struct
@@ -22,11 +22,11 @@ pub fn toy_neals_funnel<'py>(
     let n_parameters: usize = initial_conditions.ncols();
 
     let chains = StaticBuffer::new(max_n_steps, n_walkers, n_parameters);
-    let move_handler = DifferentialHandler::new();
+    let move_handler = DifferentialMove::new();
     let model = AnalyticNealsFunnelToyLogL::new();
 
     let mut ess =
-        EnsembleSliceSampler::<StaticBuffer, DifferentialHandler, AnalyticNealsFunnelToyLogL>::new(
+        EnsembleSliceSampler::<StaticBuffer, DifferentialMove, AnalyticNealsFunnelToyLogL>::new(
             max_n_steps,
             n_walkers,
             n_parameters,
@@ -36,7 +36,9 @@ pub fn toy_neals_funnel<'py>(
         );
 
     ess.initialise(initial_conditions.view()).unwrap(); // compute log-likelihood of initial positions
-    ess.run_sampler(n_burn_in).unwrap(); // run sampler
+    ess.run_burn_in(n_burn_in, &DifferentialMove::new())
+        .unwrap();
+    ess.run_sampler().unwrap(); // run sampler
 
     let result = ess.extract_state();
 

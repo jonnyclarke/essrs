@@ -78,6 +78,7 @@ impl Default for GaussianMove {
 impl EnsembleMove for GaussianMove {
     fn jump<L: LogLikelihoodModel>(
         &self,
+        _iteration: usize,
         log_likelihood_model: &L,
         state: &mut WalkerState,
     ) -> anyhow::Result<()> {
