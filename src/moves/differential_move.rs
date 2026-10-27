@@ -10,15 +10,17 @@
 //! | The new point v0', and corresponding likelihood, l0', are stored as next element on the MCMC walk.
 
 use ndarray::{Array1, ArrayViewMut1, Zip};
+use rand::{SeedableRng, rngs::StdRng};
 use rayon::prelude::*;
 
 use crate::{
     log_likelihood::LogLikelihoodModel,
-    moves::EnsembleMove,
+    moves::{DynEnsembleMove, EnsembleMove, compute_likelihood_floor},
     random::{get_rn_not, get_rn_not_or},
     slice::{step_in, step_out},
     state::WalkerState,
 };
+
 #[derive(Debug, PartialEq)]
 pub struct DifferentialMove {}
 
@@ -51,8 +53,8 @@ impl DifferentialMove {
     }
 }
 
-impl EnsembleMove for DifferentialMove {
-    fn jump<L: LogLikelihoodModel + Sync>(
+impl DifferentialMove {
+    fn jump_implementation<L: LogLikelihoodModel + Sync + ?Sized>(
         &self,
         _iteration: usize,
         log_likelihood_model: &L,
@@ -63,7 +65,7 @@ impl EnsembleMove for DifferentialMove {
         let proposals: Vec<anyhow::Result<(Array1<f64>, f64)>> = (0..n_walkers)
             .into_par_iter()
             .map(|i| {
-                let mut rng = rand::rng();
+                let mut rng: StdRng = StdRng::from_rng(&mut rand::rng());
 
                 // Each worker owns its own scratch arrays.
                 let mut direction = state.get_ith_state_vector_view(i).to_owned();
@@ -71,7 +73,7 @@ impl EnsembleMove for DifferentialMove {
                 let mut internal = state.get_ith_state_vector_view(i).to_owned();
                 let mut physical = state.get_ith_state_vector_view(i).to_owned();
 
-                let ll_floor = state.get_ith_ll_value(i) + self.get_likelihood_floor(&mut rng);
+                let ll_floor = compute_likelihood_floor(state.get_ith_ll_value(i), &mut rng);
 
                 let current = state.get_ith_state_vector_view(i);
 
@@ -112,6 +114,31 @@ impl EnsembleMove for DifferentialMove {
         }
 
         Ok(())
+    }
+}
+
+impl EnsembleMove for DifferentialMove {
+    fn jump<L>(
+        &self,
+        iteration: usize,
+        log_likelihood_model: &L,
+        state: &mut WalkerState,
+    ) -> anyhow::Result<()>
+    where
+        L: LogLikelihoodModel + Sync + ?Sized,
+    {
+        self.jump_implementation(iteration, log_likelihood_model, state)
+    }
+}
+
+impl DynEnsembleMove for DifferentialMove {
+    fn jump_dyn(
+        &self,
+        iteration: usize,
+        log_likelihood_model: &(dyn LogLikelihoodModel + Sync),
+        state: &mut WalkerState,
+    ) -> anyhow::Result<()> {
+        self.jump_implementation(iteration, log_likelihood_model, state)
     }
 }
 

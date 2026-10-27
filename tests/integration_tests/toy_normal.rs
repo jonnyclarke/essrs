@@ -1,8 +1,7 @@
 use anyhow;
 use essrs::{
-    chains::static_buffer::StaticBuffer,
     ess::EnsembleSliceSampler,
-    log_likelihood::toy::normal::AnalyticNormalToyLogL, // Likelihood model for 1d Gaussian data with errors
+    log_likelihood::f_toy::AnalyticNormalToyLogL, // Likelihood model for 1d Gaussian data with errors
     moves::differential_move::DifferentialMove,
 };
 use ndarray::array;
@@ -20,19 +19,10 @@ fn test_analytical_normal() -> anyhow::Result<()> {
     const N_PARAMETERS: usize = 1;
     const N_WALKERS: usize = 10;
 
-    let chains = StaticBuffer::new(N_STEPS, N_WALKERS, N_PARAMETERS);
     let move_handler = DifferentialMove::new();
     let model = AnalyticNormalToyLogL::new(TARGET_MU, TARGET_SIGMA);
 
-    let mut ess =
-        EnsembleSliceSampler::<StaticBuffer, DifferentialMove, AnalyticNormalToyLogL>::new(
-            N_STEPS,
-            N_WALKERS,
-            N_PARAMETERS,
-            chains,
-            move_handler,
-            model,
-        );
+    let mut ess = EnsembleSliceSampler::new(N_STEPS, N_WALKERS, N_PARAMETERS);
 
     let start = array![
         [-0.5],
@@ -47,10 +37,11 @@ fn test_analytical_normal() -> anyhow::Result<()> {
         [4.5],
     ];
 
-    ess.initialise(start.view())?;
+    ess.initialise(&model, start.view())?;
 
-    ess.run_burn_in(2000, &DifferentialMove::new()).unwrap();
-    ess.run_sampler().unwrap(); // run sampler
+    ess.run_burn_in(&model, &DifferentialMove::new(), 2000)
+        .unwrap();
+    ess.run_sampler(&model, &move_handler).unwrap(); // run sampler
 
     ess.display_parameter_summaries();
 

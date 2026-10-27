@@ -22,7 +22,7 @@ fmt-all = "fmt --all"
 # Generate crate documentation correctly rendering all mathematics
 doc-math = "doc --features doc-math"
 
-# Run docstring tests -- TODO: add ci/cd process
+# Run docstring tests
 doc-test = "test --doc"
 
 # Run the CI commands to locally check that they will pass/fail.

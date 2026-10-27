@@ -27,6 +27,14 @@ impl GaussianLl1dDataErrors {
 
         Self { mu, sigma_sqr }
     }
+
+    pub fn from_mu_sigma(mu: &Array1<f64>, sigma: &Array1<f64>) -> Self {
+        let mu = mu.to_owned();
+        let mut sigma_sqr = sigma.to_owned();
+        sigma_sqr.iter_mut().for_each(|x| *x = *x * *x);
+
+        Self { mu, sigma_sqr }
+    }
 }
 
 impl LogLikelihoodModel for GaussianLl1dDataErrors {

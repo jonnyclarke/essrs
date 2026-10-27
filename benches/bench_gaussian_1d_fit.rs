@@ -1,9 +1,10 @@
 use anyhow;
 use criterion::{Criterion, criterion_group, criterion_main};
 use essrs::{
-    chains::static_buffer::StaticBuffer,
     ess::EnsembleSliceSampler,
-    log_likelihood::{helper_generate_random_gaussian_points, normal_1d::GaussianLl1dDataErrors},
+    log_likelihood::{
+        f_scientific::GaussianLl1dDataErrors, helper_generate_random_gaussian_points,
+    },
     moves::differential_move::DifferentialMove,
 };
 use ndarray::{Array2, array};
@@ -13,19 +14,10 @@ fn fit_gaussian(data: Array2<f64>) -> anyhow::Result<()> {
     const N_PARAMETERS: usize = 2;
     const N_WALKERS: usize = 12;
 
-    let chains = StaticBuffer::new(N_STEPS, N_WALKERS, N_PARAMETERS);
     let move_handler = DifferentialMove::new();
     let model = GaussianLl1dDataErrors::new(&data);
 
-    let mut ess =
-        EnsembleSliceSampler::<StaticBuffer, DifferentialMove, GaussianLl1dDataErrors>::new(
-            N_STEPS,
-            N_WALKERS,
-            N_PARAMETERS,
-            chains,
-            move_handler,
-            model,
-        );
+    let mut ess = EnsembleSliceSampler::new(N_STEPS, N_WALKERS, N_PARAMETERS);
 
     let start = array![
         [0.102, 0.87],
@@ -42,8 +34,10 @@ fn fit_gaussian(data: Array2<f64>) -> anyhow::Result<()> {
         [0.101, 0.31],
     ];
 
-    ess.initialise(start.view())?;
-    ess.run_sampler()?;
+    ess.initialise(&model, start.view()).unwrap(); // compute log-likelihood of initial positions
+    ess.run_burn_in(&model, &DifferentialMove::new(), 10)
+        .unwrap();
+    ess.run_sampler(&model, &move_handler).unwrap(); // run sampler
 
     Ok(())
 }

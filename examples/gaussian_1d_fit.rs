@@ -2,10 +2,9 @@ use std::time::Instant;
 
 use essrs::moves::differential_move::DifferentialMove;
 use essrs::{
-    chains::static_buffer::StaticBuffer, // uses to store the walker positions with each iteration
-    ess::EnsembleSliceSampler,           // ensemble slice sampler struct
+    ess::EnsembleSliceSampler, // ensemble slice sampler struct
+    log_likelihood::f_scientific::GaussianLl1dDataErrors, // Likelihood model for 1d Gaussian data with errors
     log_likelihood::helper_generate_random_gaussian_points, // helper function to generate random gaussian points
-    log_likelihood::normal_1d::GaussianLl1dDataErrors, // Likelihood model for 1d Gaussian data with errors
 };
 use ndarray::Array2;
 use rand_distr::{Distribution, Normal};
@@ -50,27 +49,18 @@ fn main() -> anyhow::Result<()> {
     const N_PARAMETERS: usize = 2; // number of parameters in the fit: mean & standard deviation
     const N_WALKERS: usize = 100; // number of walkers used simultaneously NOTE: > 2 x N_PARAMETERS
 
-    let chains = StaticBuffer::new(N_STEPS, N_WALKERS, N_PARAMETERS);
     let move_handler = DifferentialMove::new();
     let model = GaussianLl1dDataErrors::new(&data);
-    let mut ess =
-        EnsembleSliceSampler::<StaticBuffer, DifferentialMove, GaussianLl1dDataErrors>::new(
-            N_STEPS,
-            N_WALKERS,
-            N_PARAMETERS,
-            chains,
-            move_handler,
-            model,
-        );
+    let mut ess = EnsembleSliceSampler::new(N_STEPS, N_WALKERS, N_PARAMETERS);
 
     let start = generate_cloud(&[0.1, 1.0], N_WALKERS, &[0.05, 0.05]);
 
     let start_time = Instant::now();
 
-    ess.initialise(start.view())?; // compute log-likelihood of initial positions
-    ess.run_burn_in(N_BURN_IN, &DifferentialMove::new())
+    ess.initialise(&model, start.view())?; // compute log-likelihood of initial positions
+    ess.run_burn_in(&model, &DifferentialMove::new(), N_BURN_IN)
         .unwrap();
-    ess.run_sampler().unwrap(); // run sampler
+    ess.run_sampler(&model, &move_handler).unwrap(); // run sampler
 
     let duration = start_time.elapsed();
     println!("sampler has taken {} seconds", duration.as_secs());
