@@ -1,3 +1,5 @@
+//! Implementation of walker state management; transition from 'current' to 'next'.
+
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
 pub struct WalkerState {

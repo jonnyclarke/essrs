@@ -1,4 +1,4 @@
-//! Module providing the different move (jump) options and handlers for managing combinations of move options
+//! Ensemble slice move implementations.
 
 pub mod diffconv_move;
 pub mod differential_move;

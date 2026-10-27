@@ -3,8 +3,8 @@ mod moves;
 mod scientific;
 mod toy;
 
-use numpy::{PyArray3, PyReadonlyArray2};
-use pyo3::{exceptions::PyValueError, prelude::*};
+use numpy::{PyArray2, PyArray3, PyReadonlyArray2};
+use pyo3::{exceptions::PyValueError, prelude::*, types::PyTuple};
 
 use crate::{
     ess::EnsembleSliceSampler,
@@ -107,6 +107,28 @@ impl PyEnsembleConfig {
 }
 
 #[pyfunction]
+#[pyo3(
+    signature = (
+        log_likelihood,
+        config,
+        burn_in_move,
+        sampling_move,
+        initial_conditions
+    ),
+    text_signature = "(log_likelihood, config, burn_in_move, sampling_move, initial_conditions)"
+)]
+#[doc = "Run ensemble slice sampler MCMC."]
+#[doc = ""]
+#[doc = "Args:"]
+#[doc = "    log_likelihood: The model being fit."]
+#[doc = "    config: Sampler configuration specifying the number of steps, walkers, parameters, and burn-in steps."]
+#[doc = "    burn_in_move: Move handler used during burn-in."]
+#[doc = "    sampling_move: Move handler used for posterior sampling."]
+#[doc = "    initial_conditions: Initial conditions from which the fit will be launched."]
+#[doc = ""]
+#[doc = "Returns:"]
+#[doc = "    A tuple containing the chains (N_STEPS, N_WALKERS, N_PARAMETERS)"]
+#[doc = "    and log-likelihood values (N_STEPS, N_WALKERS)."]
 fn run_mcmc<'py>(
     py: Python<'py>,
     log_likelihood: PyRef<'_, PyLogLikelihoodModel>,
@@ -114,7 +136,7 @@ fn run_mcmc<'py>(
     burn_in_move: PyRef<'_, PyDynMoveHandler>,
     sampling_move: PyRef<'_, PyDynMoveHandler>,
     initial_conditions: PyReadonlyArray2<'py, f64>,
-) -> PyResult<Bound<'py, PyArray3<f64>>> {
+) -> PyResult<Bound<'py, PyTuple>> {
     let initial_conditions = initial_conditions.as_array().to_owned();
 
     let n_walkers = initial_conditions.nrows();
@@ -153,7 +175,13 @@ fn run_mcmc<'py>(
         .run_sampler_dyn(model.as_ref(), sampling.as_ref())
         .map_err(|e| PyValueError::new_err(e.to_string()))?;
 
-    Ok(PyArray3::from_owned_array(py, sampler.extract_state()))
+    // cast everything back to python for return
+    let py_state = PyArray3::from_owned_array(py, sampler.extract_state_history());
+    let py_ll = PyArray2::from_owned_array(py, sampler.extract_log_likelihood_history());
+
+    let py_out = PyTuple::new(py, [py_state.into_any(), py_ll.into_any()])?;
+
+    Ok(py_out)
 }
 
 #[pymodule]

@@ -1,4 +1,5 @@
-//! Numerical functions of the following types:
+//! Numerical helper functions for use in constructing likelihood functions.
+//!
 //! * transforms: manipulating internal phase space to avoid hard boundary priors
 //! * likelihood: common likelihood functions such as normal in 1/2 D
 //! * priors: common priors available for use in likelihood functions

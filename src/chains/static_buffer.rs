@@ -1,11 +1,13 @@
-use ndarray::{Array1, Array2, Array3, Axis, s};
+#[cfg(test)]
+use ndarray::Array1;
+use ndarray::{Array2, Array3, ArrayViewMut1, ArrayViewMut2, Axis, s};
 
 use crate::chains::ChainBuffer;
 
 /// Static Buffer
-/// TODO: add log-likelihood storage as well
 pub struct StaticBuffer {
     chains: Array3<f64>,
+    log_likelihood: Array2<f64>,
     n_stored: usize,
 
     n_steps: usize,
@@ -23,12 +25,25 @@ impl StaticBuffer {
     pub fn new(n_steps: usize, n_walkers: usize, n_parameters: usize) -> Self {
         Self {
             chains: Array3::<f64>::zeros((n_steps, n_walkers, n_parameters)),
+            log_likelihood: Array2::<f64>::zeros((n_steps, n_walkers)),
             n_stored: 0,
 
             n_steps,
             n_walkers,
             n_parameters,
         }
+    }
+
+    #[cfg(test)]
+    pub fn record_state(&mut self, state: &Array2<f64>) {
+        let mut slice = self.chains.index_axis_mut(Axis(0), self.n_stored);
+        slice.assign(state);
+        self.n_stored += 1;
+    }
+
+    #[cfg(test)]
+    pub fn extract_parameter_history(&self, i_walker: usize, i_parameter: usize) -> Array1<f64> {
+        self.chains.slice(s![.., i_walker, i_parameter]).to_owned()
     }
 }
 
@@ -43,18 +58,24 @@ impl ChainBuffer for StaticBuffer {
         self.n_walkers
     }
 
-    fn record_state(&mut self, state: &Array2<f64>) {
-        let mut slice = self.chains.index_axis_mut(Axis(0), self.n_stored);
-        slice.assign(state);
-        self.n_stored += 1;
+    fn increment_n_stored(&mut self) {
+        self.n_stored += 1
     }
 
-    fn extract_state(&self) -> Array3<f64> {
+    fn get_next_log_likelihood_vec<'a>(&'a mut self) -> ArrayViewMut1<'a, f64> {
+        self.log_likelihood.index_axis_mut(Axis(0), self.n_stored)
+    }
+
+    fn get_next_state_matrix<'a>(&'a mut self) -> ArrayViewMut2<'a, f64> {
+        self.chains.index_axis_mut(Axis(0), self.n_stored)
+    }
+
+    fn extract_state_history(&self) -> Array3<f64> {
         self.chains.clone()
     }
 
-    fn extract_parameter_history(&self, i_walker: usize, i_parameter: usize) -> Array1<f64> {
-        self.chains.slice(s![.., i_walker, i_parameter]).to_owned()
+    fn extract_log_likeihood_history(&self) -> Array2<f64> {
+        self.log_likelihood.clone()
     }
 
     fn display_parameter_summaries(&self, n_params: i32) {
@@ -145,11 +166,11 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_state() {
+    fn test_extract_state_history() {
         let buffer = make_test_static_buffer();
 
         assert_eq!(
-            buffer.extract_state(),
+            buffer.extract_state_history(),
             array![
                 [[11.0, 12.0], [13.0, 14.0], [15.0, 16.0], [17.0, 18.0]],
                 [[21.0, 22.0], [23.0, 24.0], [25.0, 26.0], [27.0, 28.0]]
