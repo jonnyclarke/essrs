@@ -16,14 +16,14 @@ fn test_analytical_normal() -> anyhow::Result<()> {
     eprintln!("True A: {}", TARGET_A);
     eprintln!("True B: {}", TARGET_B);
 
-    const N_STEPS: usize = 2000;
+    const N_SAMPLES: usize = 2000;
     const N_PARAMETERS: usize = 2;
     const N_WALKERS: usize = 10;
 
     let move_handler = DifferentialMove::new();
     let model = AnalyticRosenbrockToyLogL::new(TARGET_A, TARGET_B);
 
-    let mut ess = EnsembleSliceSampler::new(N_STEPS, N_WALKERS, N_PARAMETERS);
+    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, None, None);
 
     let start = array![
         [0.1, 0.4],

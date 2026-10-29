@@ -12,14 +12,14 @@ fn test_normal_distribution_with_errors() -> anyhow::Result<()> {
     eprintln!("\n");
     let data = helper_generate_random_gaussian_points(100)?;
 
-    const N_STEPS: usize = 200;
+    const N_SAMPLES: usize = 200;
     const N_PARAMETERS: usize = 2;
     const N_WALKERS: usize = 12;
 
     let move_handler = DifferentialMove::new();
     let model = GaussianLl1dDataErrors::new(&data);
 
-    let mut ess = EnsembleSliceSampler::new(N_STEPS, N_WALKERS, N_PARAMETERS);
+    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, None, None);
 
     let start = array![
         [0.102, 0.87],

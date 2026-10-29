@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 use crate::{
     moves::{
         diffconv_move::DiffConvMove, differential_move::DifferentialMove,
-        gaussian_move::GaussianMove, hybrid::DynHybridOneInNMove,
+        hybrid::DynHybridOneInNMove,
     },
     python_bindings::PyDynMoveHandler,
 };
@@ -21,13 +21,6 @@ pub fn differential_move() -> PyDynMoveHandler {
 pub fn diffconv_move() -> PyDynMoveHandler {
     PyDynMoveHandler {
         inner: Box::new(DiffConvMove::new()),
-    }
-}
-
-#[pyfunction]
-pub fn gaussian_move() -> PyDynMoveHandler {
-    PyDynMoveHandler {
-        inner: Box::new(GaussianMove::new()),
     }
 }
 

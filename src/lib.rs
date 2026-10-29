@@ -8,6 +8,7 @@ pub mod functions;
 pub mod log_likelihood;
 pub mod moves;
 pub mod state;
+pub mod threading;
 
 mod random;
 mod slice;

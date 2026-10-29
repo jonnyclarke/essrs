@@ -36,6 +36,22 @@ impl WalkerState {
         std::mem::swap(&mut self.ll_current, &mut self.ll_next);
     }
 
+    pub fn parallel_buffers(
+        &mut self,
+    ) -> (
+        ndarray::ArrayView2<'_, f64>,
+        ndarray::ArrayView1<'_, f64>,
+        ndarray::ArrayViewMut2<'_, f64>,
+        ndarray::ArrayViewMut1<'_, f64>,
+    ) {
+        (
+            self.current.view(),
+            self.ll_current.view(),
+            self.next.view_mut(),
+            self.ll_next.view_mut(),
+        )
+    }
+
     // Assignment
     pub fn assign_state_matrix(&mut self, a: ArrayView2<f64>) {
         self.next.assign(&a)

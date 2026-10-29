@@ -17,7 +17,7 @@ pub(crate) use wrapper::WrappedLogLikelihoodModel;
 
 mod helpers;
 use anyhow;
-pub use helpers::helper_generate_random_gaussian_points;
+pub use helpers::{helper_generate_random_gaussian_points, random_normal_points};
 use ndarray::{Array1, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
 use thiserror::Error;
 

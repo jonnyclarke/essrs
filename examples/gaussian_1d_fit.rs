@@ -45,13 +45,13 @@ fn main() -> anyhow::Result<()> {
     let data = helper_generate_random_gaussian_points(N_DATA_POINTS)?;
 
     const N_BURN_IN: usize = 500;
-    const N_STEPS: usize = 1000; // number of steps for the walkers
+    const N_SAMPLES: usize = 1000; // number of steps for the walkers
     const N_PARAMETERS: usize = 2; // number of parameters in the fit: mean & standard deviation
     const N_WALKERS: usize = 100; // number of walkers used simultaneously NOTE: > 2 x N_PARAMETERS
 
     let move_handler = DifferentialMove::new();
     let model = GaussianLl1dDataErrors::new(&data);
-    let mut ess = EnsembleSliceSampler::new(N_STEPS, N_WALKERS, N_PARAMETERS);
+    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, None, None);
 
     let start = generate_cloud(&[0.1, 1.0], N_WALKERS, &[0.05, 0.05]);
 

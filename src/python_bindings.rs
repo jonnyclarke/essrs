@@ -11,7 +11,7 @@ use crate::{
     log_likelihood::LogLikelihoodModel,
     moves::DynEnsembleMove,
     python_bindings::{
-        moves::{diffconv_move, differential_move, gaussian_move, hybrid_ddc_move},
+        moves::{diffconv_move, differential_move, hybrid_ddc_move},
         scientific::{normal_1d_deconv, normal_2d_gmm_deconv},
         toy::{neals_funnel, normal, rosenbrock},
     },
@@ -30,48 +30,65 @@ pub struct PyDynMoveHandler {
 
 #[pyclass(name = "EnsembleConfig")]
 pub struct PyEnsembleConfig {
-    n_steps: usize,
+    n_samples: usize,
     n_walkers: usize,
     n_parameters: usize,
     n_burn_in: usize,
+    n_threads: Option<usize>,
+    n_thinning_per_sample: Option<usize>,
 }
 
 #[pymethods]
 impl PyEnsembleConfig {
     #[new]
+    #[pyo3(
+        signature = (
+            n_samples,
+            n_walkers,
+            n_parameters,
+            n_burn_in,
+            n_threads=None,
+            n_thinning_per_sample=None
+        ),
+        text_signature = "(n_samples, n_walkers, n_parameters, n_burn_in, n_threads=None, n_thinning_per_sample=None)"
+    )]
     fn new(
-        n_steps: usize,
+        n_samples: usize,
         n_walkers: usize,
         n_parameters: usize,
         n_burn_in: usize,
+        n_threads: Option<usize>,
+        n_thinning_per_sample: Option<usize>,
     ) -> PyResult<Self> {
-        if n_steps == 0 {
+        if n_samples == 0 {
             return Err(PyValueError::new_err(
-                "max_n_steps must be greater than zero",
+                "max_n_samples must be greater than zero",
             ));
         }
 
         Ok(Self {
-            n_steps,
+            n_samples,
             n_walkers,
             n_parameters,
             n_burn_in,
+            n_threads,
+            n_thinning_per_sample,
         })
     }
 
     #[getter]
-    fn n_steps(&self) -> usize {
-        self.n_steps
+    fn n_samples(&self) -> usize {
+        self.n_samples
     }
 
     #[setter]
-    fn set_n_steps(&mut self, value: usize) -> PyResult<()> {
+    fn set_n_samples(&mut self, value: usize) -> PyResult<()> {
         if value == 0 {
             return Err(PyValueError::new_err(
-                "max_n_steps must be greater than zero",
+                "max_n_samples must be greater than zero",
             ));
         }
-        self.n_steps = value;
+        self.n_samples = value;
         Ok(())
     }
 
@@ -104,6 +121,26 @@ impl PyEnsembleConfig {
     fn set_n_burn_in(&mut self, value: usize) {
         self.n_burn_in = value;
     }
+
+    #[getter]
+    fn n_threads(&self) -> Option<usize> {
+        self.n_threads
+    }
+
+    #[setter]
+    fn set_n_threads(&mut self, value: usize) {
+        self.n_threads = Some(value);
+    }
+
+    #[getter]
+    fn n_thinning_per_sample(&self) -> Option<usize> {
+        self.n_thinning_per_sample
+    }
+
+    #[setter]
+    fn set_n_thinning_per_sample(&mut self, value: usize) {
+        self.n_thinning_per_sample = Some(value);
+    }
 }
 
 #[pyfunction]
@@ -127,8 +164,8 @@ impl PyEnsembleConfig {
 #[doc = "    initial_conditions: Initial conditions from which the fit will be launched."]
 #[doc = ""]
 #[doc = "Returns:"]
-#[doc = "    A tuple containing the chains (N_STEPS, N_WALKERS, N_PARAMETERS)"]
-#[doc = "    and log-likelihood values (N_STEPS, N_WALKERS)."]
+#[doc = "    A tuple containing the chains (n_samples, N_WALKERS, N_PARAMETERS)"]
+#[doc = "    and log-likelihood values (n_samples, N_WALKERS)."]
 fn run_mcmc<'py>(
     py: Python<'py>,
     log_likelihood: PyRef<'_, PyLogLikelihoodModel>,
@@ -160,8 +197,13 @@ fn run_mcmc<'py>(
     let burn = &burn_in_move.inner;
     let sampling = &sampling_move.inner;
 
-    let mut sampler =
-        EnsembleSliceSampler::new(config.n_steps, config.n_walkers, config.n_parameters);
+    let mut sampler = EnsembleSliceSampler::new(
+        config.n_samples,
+        config.n_walkers,
+        config.n_parameters,
+        config.n_threads,
+        config.n_thinning_per_sample,
+    );
 
     sampler
         .initialise_dyn(model.as_ref(), initial_conditions.view())
@@ -215,7 +257,6 @@ fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let moves = PyModule::new(m.py(), "moves")?;
     moves.add_function(wrap_pyfunction!(differential_move, &moves)?)?;
     moves.add_function(wrap_pyfunction!(diffconv_move, &moves)?)?;
-    moves.add_function(wrap_pyfunction!(gaussian_move, &moves)?)?;
     moves.add_function(wrap_pyfunction!(hybrid_ddc_move, &moves)?)?;
 
     m.add_submodule(&moves)?;
