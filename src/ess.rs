@@ -1,8 +1,6 @@
-//! Ensemble Slice Sampler
-//!
-//! This is the primary API to run the MCMC process.
+//! Primary API of the Ensemble Slice Sampler MCMC process.
 
-use ndarray::{Array3, ArrayView2};
+use ndarray::{Array2, Array3, ArrayView2};
 use thiserror::Error;
 
 use crate::{
@@ -79,11 +77,18 @@ impl EnsembleSliceSampler {
             .display_parameter_summaries(self.n_parameters as i32);
     }
 
-    /// Extract full state
+    /// Extract full state history
     ///
-    /// This wraps the chain buffer object's 'extract_state' function
-    pub fn extract_state(&self) -> Array3<f64> {
-        self.chains.extract_state()
+    /// This wraps the chain buffer object's 'extract_state_history' function
+    pub fn extract_state_history(&self) -> Array3<f64> {
+        self.chains.extract_state_history()
+    }
+
+    /// Extract full log likelihood history
+    ///
+    /// This wraps the chain buffer object's 'extract_state_history' function
+    pub fn extract_log_likelihood_history(&self) -> Array2<f64> {
+        self.chains.extract_log_likeihood_history()
     }
 
     /// Initialise from physical initial conditions
@@ -162,10 +167,38 @@ impl EnsembleSliceSampler {
 
         Ok(())
     }
-    /// Run the MCMC sampler
+
+    /// Move state into chain storage
+    ///
+    /// # Arguments:
+    /// * model: this is required to apply the columnar internal-to-physical transform
+    fn state_to_chains<L>(&mut self, model: &L) -> anyhow::Result<()>
+    where
+        L: LogLikelihoodModel + ?Sized,
+    {
+        self.accept_proposed_state();
+
+        self.chains
+            .get_next_log_likelihood_vec()
+            .assign(&self.state.get_ll_vector_view());
+
+        let internal = self.state.get_state_matrix_view();
+        model.wrapped_columnar_transform_internal_to_physical(
+            internal,
+            self.chains.get_next_state_matrix(),
+        )?;
+
+        self.chains.increment_n_stored();
+        Ok(())
+    }
+
+    /// Run the MCMC sampler -- static dispatch
+    ///
+    /// Uses static dispatch for optimised applications
     ///
     /// # Arguments
-    /// * n_burn_in: the number of iterations to allow walker convergence prior to storing samples
+    /// * model: the log-likelihood model to search over
+    /// * move_handler: the move handler used for progressing each walker
     pub fn run_sampler<L: LogLikelihoodModel, M: EnsembleMove>(
         &mut self,
         model: &L,
@@ -173,19 +206,20 @@ impl EnsembleSliceSampler {
     ) -> anyhow::Result<()> {
         for iteration in 1..=self.n_steps {
             move_handler.jump(iteration, model, &mut self.state)?;
-            self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
-
-            let internal = self.state.get_state_matrix_view();
-            let mut physical = internal.to_owned();
-
-            model.wrapped_columnar_transform_internal_to_physical(internal, physical.view_mut())?;
-            self.chains.record_state(&physical);
+            self.state_to_chains(model)?;
         }
 
         Ok(())
     }
 
-    ///TODO: remove copy-paste artifacts where possible
+    /// Run the MCMC sampler -- dynamic dispatch
+    ///
+    /// Uses dynamic dispatch for greater flexibility
+    /// e.g. python bindings
+    ///
+    /// # Arguments
+    /// * model: the log-likelihood model to search over
+    /// * move_handler: the move handler used for progressing each walker
     pub fn run_sampler_dyn(
         &mut self,
         model: &dyn LogLikelihoodModel,
@@ -193,13 +227,7 @@ impl EnsembleSliceSampler {
     ) -> anyhow::Result<()> {
         for iteration in 1..=self.n_steps {
             move_handler.jump_dyn(iteration, model, &mut self.state)?;
-            self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
-
-            let internal = self.state.get_state_matrix_view();
-            let mut physical = internal.to_owned();
-
-            model.wrapped_columnar_transform_internal_to_physical(internal, physical.view_mut())?;
-            self.chains.record_state(&physical);
+            self.state_to_chains(model)?;
         }
 
         Ok(())

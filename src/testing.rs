@@ -1,9 +1,6 @@
 use ndarray::{Array1, Array2, array};
 
-use crate::{
-    chains::{ChainBuffer, static_buffer::StaticBuffer},
-    state::WalkerState,
-};
+use crate::{chains::static_buffer::StaticBuffer, state::WalkerState};
 
 pub struct WalkerStateBuilder {
     state: WalkerState,

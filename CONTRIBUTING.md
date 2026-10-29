@@ -47,8 +47,12 @@ cargo +nightly fmt-all
 ```
 
 ## Documentation
-Please check the auto-documentation process works and everything is rendered correctly.
-This can be done using:
+Please check the auto-documentation process works and that everything is rendered correctly.
+Documentation tests can be run using:
+```bash
+cargo doc-test
+```
+and the rendering of documentation, including mathematical latex representations, can be done with:
 ```bash
 cargo doc-math --open
 ```
@@ -69,7 +73,7 @@ where `<n_commits_to_review>` is an integer value controlling how many commits b
 ## Building Python Extension
 In order to build the python module that is implemented within this repo please use:
 ```bash
-ur run maturin develop
+uv run maturin develop
 ```
 to build in developer mode and:
 ```bash
