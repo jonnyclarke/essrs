@@ -17,7 +17,7 @@ pub enum ChainError {
 /// Trait containing all required methods of the chain storage struct.
 pub trait ChainBuffer {
     /// Return the max number of steps
-    fn get_n_steps(&self) -> usize;
+    fn get_n_samples(&self) -> usize;
 
     /// Return the number of walkers
     fn get_n_walkers(&self) -> usize;

@@ -2,14 +2,13 @@
 
 pub mod diffconv_move;
 pub mod differential_move;
-pub mod gaussian_move;
 
 pub mod hybrid;
 
 use anyhow;
 use rand::{Rng, rngs::StdRng};
 
-use crate::{log_likelihood::LogLikelihoodModel, state::WalkerState};
+use crate::{log_likelihood::LogLikelihoodModel, state::WalkerState, threading::Threading};
 
 pub enum MoveType {
     DiffConv, // Modification of 'Differential Move' designed to enhance convergence
@@ -33,6 +32,7 @@ pub trait EnsembleMove {
         iteration: usize,
         log_likelihood_model: &L,
         state: &mut WalkerState,
+        threads: &Threading,
     ) -> anyhow::Result<()>
     where
         L: LogLikelihoodModel + Sync + ?Sized;
@@ -44,5 +44,6 @@ pub trait DynEnsembleMove: Send + Sync {
         iteration: usize,
         log_likelihood_model: &(dyn LogLikelihoodModel + Sync),
         state: &mut WalkerState,
+        threads: &Threading,
     ) -> anyhow::Result<()>;
 }

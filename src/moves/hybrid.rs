@@ -9,6 +9,7 @@ use crate::{
     log_likelihood::LogLikelihoodModel,
     moves::{DynEnsembleMove, EnsembleMove},
     state::WalkerState,
+    threading::Threading,
 };
 
 fn choose_move(i: usize, one_in_n: usize) -> bool {
@@ -37,10 +38,11 @@ impl<P: EnsembleMove, S: EnsembleMove> EnsembleMove for HybridOneInNMove<P, S> {
         iteration: usize,
         model: &L,
         state: &mut WalkerState,
+        threads: &Threading,
     ) -> anyhow::Result<()> {
         match choose_move(iteration, self.one_in_n) {
-            false => self.primary.jump(iteration, model, state)?,
-            true => self.secondary.jump(iteration, model, state)?,
+            false => self.primary.jump(iteration, model, state, threads)?,
+            true => self.secondary.jump(iteration, model, state, threads)?,
         }
 
         Ok(())
@@ -73,14 +75,15 @@ impl DynEnsembleMove for DynHybridOneInNMove {
         iteration: usize,
         log_likelihood_model: &(dyn LogLikelihoodModel + Sync),
         state: &mut WalkerState,
+        threads: &Threading,
     ) -> anyhow::Result<()> {
         match choose_move(iteration, self.one_in_n) {
             false => self
                 .primary
-                .jump_dyn(iteration, log_likelihood_model, state)?,
+                .jump_dyn(iteration, log_likelihood_model, state, threads)?,
             true => self
                 .secondary
-                .jump_dyn(iteration, log_likelihood_model, state)?,
+                .jump_dyn(iteration, log_likelihood_model, state, threads)?,
         }
 
         Ok(())

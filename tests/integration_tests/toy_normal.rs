@@ -15,14 +15,14 @@ fn test_analytical_normal() -> anyhow::Result<()> {
     eprintln!("True Mean: {}", TARGET_MU);
     eprintln!("True Standard Deviation: {}", TARGET_SIGMA);
 
-    const N_STEPS: usize = 2000;
+    const N_SAMPLES: usize = 2000;
     const N_PARAMETERS: usize = 1;
     const N_WALKERS: usize = 10;
 
     let move_handler = DifferentialMove::new();
     let model = AnalyticNormalToyLogL::new(TARGET_MU, TARGET_SIGMA);
 
-    let mut ess = EnsembleSliceSampler::new(N_STEPS, N_WALKERS, N_PARAMETERS);
+    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, None, None);
 
     let start = array![
         [-0.5],

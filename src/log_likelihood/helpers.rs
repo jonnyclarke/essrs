@@ -1,5 +1,16 @@
-use ndarray::Array2;
+use ndarray::{Array1, Array2};
+use rand::rng;
 use rand_distr::{Distribution, LogNormal, Normal};
+
+pub fn random_normal_points(n: usize, mean: f64, std_dev: f64) -> Array1<f64> {
+    let normal = Normal::new(mean, std_dev).expect("Invalid normal distribution parameters");
+
+    let mut rng = rng();
+
+    let v: Vec<f64> = (0..n).map(|_| normal.sample(&mut rng)).collect();
+
+    Array1::from(v)
+}
 
 pub fn helper_generate_random_gaussian_points(n: usize) -> anyhow::Result<Array2<f64>> {
     let mut data = Vec::<f64>::with_capacity(n * 2);

@@ -8,6 +8,7 @@ use crate::{
     log_likelihood::{LogLikelihoodError, LogLikelihoodModel, WrappedLogLikelihoodModel},
     moves::{DynEnsembleMove, EnsembleMove},
     state::WalkerState,
+    threading::Threading,
 };
 
 /// Error enum for the EnsembleSliceSampler struct
@@ -26,43 +27,53 @@ pub enum InitialisationError {
 /// * implementor of 'LogLikelihoodModel' trait: provides log-likelihood computation
 pub struct EnsembleSliceSampler {
     /// the maximum number of steps for which to run the MCMC
-    n_steps: usize,
+    n_samples: usize,
     /// the number of walkers in the MCMC
     /// tradeoff is that more walkers provide better exploration but increase computational cost
     n_walkers: usize,
     /// number of parameters being fitted
     n_parameters: usize,
+    /// number of steps per thinning; i.e. take the last state out of n
+    n_thinning_per_sample: usize,
 
     /// chain storage object
     chains: StaticBuffer,
 
     /// walker state: includes 'current' and 'next'
     state: WalkerState,
-    // /// move handler object
-    // move_handler: M,
-    // /// log-likelihood object
-    // /// this owns the data being fitted making 'EnsembleSliceSampler' generic over data
-    // model: L,
+
+    /// threading
+    threads: Threading,
 }
 
 impl EnsembleSliceSampler {
     /// Generate a new EnsembleSliceSampler object
     ///
     /// # Arguments
-    /// * n_steps: the number of steps the sampler will take
+    /// * n_samples: the number of steps the sampler will take
     /// * n_walkers: the number of walkers used for parallel sampling
     /// * n_parameters: the number of parameters in the likelihood model
-    pub fn new(n_steps: usize, n_walkers: usize, n_parameters: usize) -> Self {
+    pub fn new(
+        n_samples: usize,
+        n_walkers: usize,
+        n_parameters: usize,
+        n_threads: Option<usize>,
+        n_thinning_per_sample: Option<usize>,
+    ) -> Self {
         let required_walkers = (n_parameters * 2).max(3);
         assert!(n_walkers >= required_walkers);
 
+        let threads = Threading::new(n_threads, n_parameters).unwrap();
+
         Self {
-            n_steps,
+            n_samples,
             n_walkers,
             n_parameters,
+            n_thinning_per_sample: n_thinning_per_sample.unwrap_or(1),
 
-            chains: StaticBuffer::new(n_steps, n_walkers, n_parameters),
+            chains: StaticBuffer::new(n_samples, n_walkers, n_parameters),
             state: WalkerState::new(n_walkers, n_parameters),
+            threads,
         }
     }
 
@@ -147,7 +158,7 @@ impl EnsembleSliceSampler {
         M: EnsembleMove + ?Sized,
     {
         for iteration in 1..=n_burn_in {
-            burn_move_handler.jump(iteration, model, &mut self.state)?;
+            burn_move_handler.jump(iteration, model, &mut self.state, &self.threads)?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
         }
 
@@ -161,7 +172,7 @@ impl EnsembleSliceSampler {
         n_burn_in: usize,
     ) -> anyhow::Result<()> {
         for iteration in 1..=n_burn_in {
-            burn_move_handler.jump_dyn(iteration, model, &mut self.state)?;
+            burn_move_handler.jump_dyn(iteration, model, &mut self.state, &self.threads)?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
         }
 
@@ -176,8 +187,6 @@ impl EnsembleSliceSampler {
     where
         L: LogLikelihoodModel + ?Sized,
     {
-        self.accept_proposed_state();
-
         self.chains
             .get_next_log_likelihood_vec()
             .assign(&self.state.get_ll_vector_view());
@@ -204,9 +213,13 @@ impl EnsembleSliceSampler {
         model: &L,
         move_handler: &M,
     ) -> anyhow::Result<()> {
-        for iteration in 1..=self.n_steps {
-            move_handler.jump(iteration, model, &mut self.state)?;
-            self.state_to_chains(model)?;
+        for iteration in 1..=self.n_samples * self.n_thinning_per_sample {
+            move_handler.jump(iteration, model, &mut self.state, &self.threads)?;
+            self.accept_proposed_state();
+
+            if iteration.is_multiple_of(self.n_thinning_per_sample) {
+                self.state_to_chains(model)?;
+            }
         }
 
         Ok(())
@@ -225,9 +238,13 @@ impl EnsembleSliceSampler {
         model: &dyn LogLikelihoodModel,
         move_handler: &dyn DynEnsembleMove,
     ) -> anyhow::Result<()> {
-        for iteration in 1..=self.n_steps {
-            move_handler.jump_dyn(iteration, model, &mut self.state)?;
-            self.state_to_chains(model)?;
+        for iteration in 1..=self.n_samples * self.n_thinning_per_sample {
+            move_handler.jump_dyn(iteration, model, &mut self.state, &self.threads)?;
+            self.accept_proposed_state();
+
+            if iteration.is_multiple_of(self.n_thinning_per_sample) {
+                self.state_to_chains(model)?;
+            }
         }
 
         Ok(())
@@ -251,7 +268,7 @@ mod tests_ess {
         let data = array![[0.0_f64, 0.0_f64]];
         let model = GaussianLl1dDataErrors::new(&data);
 
-        let mut ess = EnsembleSliceSampler::new(2, 4, 2);
+        let mut ess = EnsembleSliceSampler::new(2, 4, 2, None, None);
 
         let physical = array![
             [0.0_f64, 1.0_f64],
@@ -301,7 +318,7 @@ mod tests_ess {
         let data = array![[0.0_f64, 0.0_f64]];
         let model = GaussianLl1dDataErrors::new(&data);
 
-        let mut ess = EnsembleSliceSampler::new(2, 4, 2);
+        let mut ess = EnsembleSliceSampler::new(2, 4, 2, None, None);
 
         let physical = array![
             [0.0_f64, 1.0_f64],
@@ -348,7 +365,7 @@ mod tests_ess {
 
     #[test]
     fn test_swap_wrapper() -> anyhow::Result<()> {
-        let mut ess = EnsembleSliceSampler::new(2, 4, 2);
+        let mut ess = EnsembleSliceSampler::new(2, 4, 2, None, None);
 
         ess.accept_proposed_state();
 
