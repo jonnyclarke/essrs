@@ -138,6 +138,11 @@ impl EnsembleSliceSampler {
         Ok(())
     }
 
+    /// Initialise from physical initial conditions -- dynamic dispatch models
+    ///
+    /// # Arguments:
+    /// * model: log-likelihood model
+    /// * physical: Array2 object [n_walker, n_parameter] containing initial conditions in physical parameter space
     pub fn initialise_dyn(
         &mut self,
         model: &dyn LogLikelihoodModel,
@@ -165,6 +170,7 @@ impl EnsembleSliceSampler {
         Ok(())
     }
 
+    /// Run burn in phase -- dynamic dispatch mode
     pub fn run_burn_in_dyn(
         &mut self,
         model: &dyn LogLikelihoodModel,

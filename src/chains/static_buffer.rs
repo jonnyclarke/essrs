@@ -34,6 +34,10 @@ impl StaticBuffer {
         }
     }
 
+    /// Take a state matrix and store it in next available state slot
+    /// 
+    /// TODO:
+    /// - MAKE THIS TAKE A LOG LIKELIHOOD TO keep consistency
     #[cfg(test)]
     pub fn record_state(&mut self, state: &Array2<f64>) {
         let mut slice = self.chains.index_axis_mut(Axis(0), self.n_stored);
@@ -41,9 +45,10 @@ impl StaticBuffer {
         self.n_stored += 1;
     }
 
+    /// Extract the parameter history of a walker up to a given point
     #[cfg(test)]
     pub fn extract_parameter_history(&self, i_walker: usize, i_parameter: usize) -> Array1<f64> {
-        self.chains.slice(s![.., i_walker, i_parameter]).to_owned()
+        self.chains.slice(s![..self.n_stored, i_walker, i_parameter]).to_owned()
     }
 }
 
