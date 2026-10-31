@@ -40,7 +40,7 @@ pub fn mahalanobis_from_cholesky(
 }
 
 pub fn normal_nd_ll(n_pi_ln_const: f64, log_det: f64, mahalanobis: f64) -> f64 {
-    return -0.5 * (n_pi_ln_const + log_det + mahalanobis);
+    -0.5 * (n_pi_ln_const + log_det + mahalanobis)
 }
 
 pub fn multivariate_gaussian_log_likelihood(
@@ -53,7 +53,7 @@ pub fn multivariate_gaussian_log_likelihood(
     assert_eq!(mean.len(), n);
     assert_eq!(covariance.shape(), (n, n));
 
-    let cholesky_l = covariance_to_cholesky_l(&covariance);
+    let cholesky_l = covariance_to_cholesky_l(covariance);
 
     let log_det = cholesky_l_to_log_det(&cholesky_l);
 

@@ -249,8 +249,7 @@ pub trait LogLikelihoodModel: Send + Sync {
 /// Such models store data which is to be fit and optimise a set of parameters modelling that data.
 ///
 /// # Functions
-/// * log_likelihood_pointwise: The base trait returns a single f64 over all data points.
-///     This function returns a pointwise log-likelihood enabling model usage in mixture models
+/// * log_likelihood_pointwise: The base trait returns a single f64 over all data points. This function returns a pointwise log-likelihood enabling model usage in mixture models
 pub trait ProbThetaGivenDataModel: LogLikelihoodModel {
     fn log_likelihood_pointwise(&self, parameters: ArrayView1<f64>) -> anyhow::Result<Array1<f64>>;
 }

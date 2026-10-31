@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[pyfunction]
-pub fn dyn_ftheta_ncomp_mm<'py>(
+pub fn dyn_ftheta_ncomp_mm(
     list_models: Vec<PyRef<'_, PyLogLikelihoodModel>>,
 ) -> PyResult<PyLogLikelihoodModel> {
     let components = list_models
