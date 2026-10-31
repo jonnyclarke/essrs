@@ -4,11 +4,14 @@ use anyhow::bail;
 use ndarray::{Zip, s};
 
 use crate::{
-    functions::transforms::{
-        apply_transform_column,
-        logistic::{logistic, logistic_inverse, logistic_log_jacobian_inplace},
+    functions::{
+        numerical::log_sum_exp,
+        transforms::{
+            apply_transform_column,
+            logistic::{logistic, logistic_inverse, logistic_log_jacobian_inplace},
+        },
     },
-    log_likelihood::{LogLikelihoodModel, ProbThetaGivenDataModel, mixture::log_sum_exp},
+    log_likelihood::{LogLikelihoodModel, ProbThetaGivenDataModel},
 };
 
 pub struct DynNcompMixtureModel {

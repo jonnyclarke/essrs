@@ -14,10 +14,10 @@ use crate::{
     log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel, ProbThetaGivenDataModel},
     moves::DynEnsembleMove,
     python_bindings::{
-        mixture_models::{dyn_ftheta_ncomp_mm, dyn_mixture_model},
+        mixture_models::{dyn_ftheta_ncomp_mm},
         moves::{diffconv_move, differential_move, hybrid_ddc_move},
         scientific::{normal_1d_deconv, normal_2d_gmm_deconv},
-        toy::{neals_funnel, normal, normal_1d_mix, rosenbrock},
+        toy::{dyn_fdata_ncomp_mm, neals_funnel, normal_1d, normal_1d_mix, rosenbrock},
     },
 };
 
@@ -248,11 +248,11 @@ fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     let toy = PyModule::new(m.py(), "toy")?;
     toy.add_function(wrap_pyfunction!(neals_funnel, &toy)?)?;
-    toy.add_function(wrap_pyfunction!(normal, &toy)?)?;
+    toy.add_function(wrap_pyfunction!(normal_1d, &toy)?)?;
     toy.add_function(wrap_pyfunction!(normal_1d_mix, &toy)?)?; // TODO: replace this with generic optimised implementation
     toy.add_function(wrap_pyfunction!(rosenbrock, &toy)?)?;
 
-    toy.add_function(wrap_pyfunction!(dyn_mixture_model, &toy)?)?;
+    toy.add_function(wrap_pyfunction!(dyn_fdata_ncomp_mm, &toy)?)?;
 
     let scientific = PyModule::new(m.py(), "scientific")?;
     scientific.add_function(wrap_pyfunction!(normal_1d_deconv, &scientific)?)?;

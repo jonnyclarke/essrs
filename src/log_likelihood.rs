@@ -11,7 +11,6 @@
 //! The second is to apply the transformation
 pub mod f_scientific;
 pub mod f_toy;
-pub mod mixture;
 
 mod wrapper;
 pub(crate) use wrapper::WrappedLogLikelihoodModel;

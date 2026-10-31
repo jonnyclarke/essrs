@@ -3,10 +3,7 @@
 // !
 // ! * would require each function to also return a point-wise array-type of log-likelihoods
 
-mod dynamic;
 use std::sync::Arc;
-
-pub use dynamic::DynNcompMixtureModel;
 use ndarray::Array1;
 
 use crate::{
@@ -40,12 +37,6 @@ impl DynMixtureModelDistributionSampler {
 impl LogLikelihoodModel for DynMixtureModelDistributionSampler {
     fn get_n_parameters(&self) -> usize {
         self.components[0].get_n_parameters()
-        // let mut n: usize = 0;
-        // for c in &self.components {
-        //     n += c.get_n_parameters()
-        // };
-
-        // n
     }
 
     fn log_likelihood(&self, parameters: ndarray::prelude::ArrayView1<f64>) -> anyhow::Result<f64> {
