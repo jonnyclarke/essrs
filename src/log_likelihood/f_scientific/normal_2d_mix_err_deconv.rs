@@ -9,6 +9,7 @@ use crate::{
         numerical::log_sum_exp,
         transforms::{
             apply_inplace_multi_column_transform, apply_transform_column,
+            logistic::{logistic, logistic_inverse, logistic_log_jacobian_inplace},
             ordseq::{ordinal_sequencer, ordinal_sequencer_inverse},
             softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
             tanh::{tanh_inverse, tanh_log_jacobian_inplace, tanh_x},
@@ -16,7 +17,6 @@ use crate::{
     },
     log_likelihood::LogLikelihoodModel,
 };
-use crate::functions::transforms::logistic::{logistic, logistic_log_jacobian_inplace, logistic_inverse};
 
 pub const N_PARAMETERS_NORMAL_2D: usize = 5;
 
@@ -111,7 +111,7 @@ impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
 
         internal.assign(&physical);
 
-        for i in 0..n_comp-1 {
+        for i in 0..n_comp - 1 {
             apply_transform_column(logistic_inverse, &mut internal, i)?;
         }
 
@@ -154,7 +154,7 @@ impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
 
         physical.assign(&internal);
 
-        for i in 0..n_comp-1 {
+        for i in 0..n_comp - 1 {
             apply_transform_column(logistic, &mut physical, i)?;
         }
 
@@ -249,22 +249,22 @@ impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
 
         thetas.push(last_theta);
 
-
         for k in 0..n_comp {
             for i in 0..n_data {
                 // logic for 2d normal log-likelihood
-                let ll_ik = thetas[k].ln() + log_normal_2d(
-                    x[i],
-                    y[i],
-                    physical[self.get_index_kth_x_mu(k)],
-                    physical[self.get_index_kth_y_mu(k)],
-                    a[i] + physical[self.get_index_kth_x_er(k)].powi(2),
-                    bc[i]
-                        + (physical[self.get_index_kth_x_er(k)]
-                            * physical[self.get_index_kth_y_er(k)]
-                            * physical[self.get_index_kth_p(k)]),
-                    d[i] + physical[self.get_index_kth_y_er(k)].powi(2),
-                );
+                let ll_ik = thetas[k].ln()
+                    + log_normal_2d(
+                        x[i],
+                        y[i],
+                        physical[self.get_index_kth_x_mu(k)],
+                        physical[self.get_index_kth_y_mu(k)],
+                        a[i] + physical[self.get_index_kth_x_er(k)].powi(2),
+                        bc[i]
+                            + (physical[self.get_index_kth_x_er(k)]
+                                * physical[self.get_index_kth_y_er(k)]
+                                * physical[self.get_index_kth_p(k)]),
+                        d[i] + physical[self.get_index_kth_y_er(k)].powi(2),
+                    );
                 match k {
                     0 => ll_i[i] = ll_ik,
                     _ => ll_i[i] = log_sum_exp(ll_i[i], ll_ik)?,

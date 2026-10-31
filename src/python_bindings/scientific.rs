@@ -5,9 +5,10 @@ use numpy::{PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
 use crate::{
-    log_likelihood::f_scientific::{GaussianLl1dDataErrors, GaussianMixModel2DimUnDeConv},
+    log_likelihood::f_scientific::{
+        DynNcompMixtureModel, GaussianLl1dDataErrors, GaussianMixModel2DimUnDeConv,
+    },
     python_bindings::PyLogLikelihoodModel,
-    log_likelihood::f_scientific::DynNcompMixtureModel,
 };
 
 #[pyfunction]
