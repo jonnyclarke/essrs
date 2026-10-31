@@ -98,11 +98,10 @@ impl ProbThetaGivenDataModel for GaussianLl1dDataErrors {
         let sigma2 = parameters[1].powi(2);
 
         let ll = Array1::from_iter(
-            self
-                .mu
+            self.mu
                 .iter()
                 .zip(self.sigma_sqr.iter())
-                .map(|(v, e2)| log_normalised_gaussian_s2(*v, mu, sigma2 + e2))
+                .map(|(v, e2)| log_normalised_gaussian_s2(*v, mu, sigma2 + e2)),
         );
 
         Ok(ll)

@@ -1,18 +1,18 @@
 // ! Generic implementation of a mixture mdoel
 // ! TODO: evaluate feasibility
-// ! 
+// !
 // ! * would require each function to also return a point-wise array-type of log-likelihoods
 
 mod dynamic;
-pub use dynamic::DynNcompMixtureModel;
-
 use std::sync::Arc;
-use ndarray::{Array1};
 
-use crate::log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel};
-use crate::functions::numerical::log_sum_exp;
+pub use dynamic::DynNcompMixtureModel;
+use ndarray::Array1;
 
-
+use crate::{
+    functions::numerical::log_sum_exp,
+    log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel},
+};
 
 pub struct DynMixtureModelDistributionSampler {
     theta: Array1<f64>,
@@ -27,14 +27,13 @@ impl DynMixtureModelDistributionSampler {
 
         let expected = components[0].get_n_parameters();
 
-        assert!(components.iter().all(|model| {
-            model.get_n_parameters() == expected
-        }));
+        assert!(
+            components
+                .iter()
+                .all(|model| { model.get_n_parameters() == expected })
+        );
 
-        Self {
-            theta,
-            components,
-        }
+        Self { theta, components }
     }
 }
 
@@ -51,24 +50,20 @@ impl LogLikelihoodModel for DynMixtureModelDistributionSampler {
 
     fn log_likelihood(&self, parameters: ndarray::prelude::ArrayView1<f64>) -> anyhow::Result<f64> {
         let n = self.theta.len() + 1;
-        
-        let mut ll = 
-            (1.0_f64 - self.theta.sum()).ln()
+
+        let mut ll = (1.0_f64 - self.theta.sum()).ln()
             + self.components[n - 1].log_likelihood(parameters)?;
 
         for i in 0..n - 1 {
             ll = log_sum_exp(
                 ll,
-                self.theta[i].ln() + self.components[i].log_likelihood(parameters)?
+                self.theta[i].ln() + self.components[i].log_likelihood(parameters)?,
             )?
         }
 
         Ok(ll)
     }
 }
-
-
-
 
 // pub struct MixtureModelDistributionSampler<L: ProbDataGivenThetaModel> {
 //     n_components: usize,
@@ -84,7 +79,7 @@ impl LogLikelihoodModel for DynMixtureModelDistributionSampler {
 //         Self {
 //             n_components,
 //             n_sub_parameters: components[0].get_n_parameters(),
-            
+
 //             theta,
 //             components,
 //         }
@@ -97,7 +92,7 @@ impl LogLikelihoodModel for DynMixtureModelDistributionSampler {
 //     }
 
 //     fn log_likelihood(&self, parameters: ndarray::prelude::ArrayView1<f64>) -> anyhow::Result<f64> {
-        
+
 //         let mut ll = (1.0 - self.theta.sum()).ln() + self.components[self.n_components - 1].log_likelihood(parameters)?;
 
 //         for i in 0..self.n_components - 1 {

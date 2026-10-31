@@ -17,9 +17,8 @@ mod wrapper;
 pub(crate) use wrapper::WrappedLogLikelihoodModel;
 
 mod helpers;
-pub use helpers::{helper_generate_random_gaussian_points, random_normal_points};
-
 use anyhow;
+pub use helpers::{helper_generate_random_gaussian_points, random_normal_points};
 use ndarray::{Array1, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
 use thiserror::Error;
 
@@ -246,9 +245,9 @@ pub trait LogLikelihoodModel: Send + Sync {
 }
 
 /// Trait used to annotate models which infer P(Theta | Data)
-/// 
+///
 /// Such models store data which is to be fit and optimise a set of parameters modelling that data.
-/// 
+///
 /// # Functions
 /// * log_likelihood_pointwise: The base trait returns a single f64 over all data points.
 ///     This function returns a pointwise log-likelihood enabling model usage in mixture models
@@ -257,10 +256,10 @@ pub trait ProbThetaGivenDataModel: LogLikelihoodModel {
 }
 
 /// Trait used to annotate models which are inferring P(x|theta) rather than P(theta|x)
-/// 
+///
 /// The critical difference is that, rather than being passed parameter values to infer from data,
 /// the model stores parameter values and we infer samples from the distribution.
-/// 
+///
 /// Such a model is far less complex.
 /// A P(theta|x) model generates a log-likelihood for each x_i which needs to be handled n context of a mixture.
 /// This system simply returns a log-likelihood for that sample of distribution space.

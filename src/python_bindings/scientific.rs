@@ -1,6 +1,7 @@
+use std::sync::Arc;
+
 use numpy::{PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
-use std::sync::Arc;
 
 use crate::{
     log_likelihood::f_scientific::{GaussianLl1dDataErrors, GaussianMixModel2DimUnDeConv},

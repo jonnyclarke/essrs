@@ -1,10 +1,11 @@
 //! Construction of Python Binding
+mod mixture_models;
 mod moves;
 mod scientific;
 mod toy;
-mod mixture_models;
 
 use std::sync::Arc;
+
 use numpy::{PyArray2, PyArray3, PyReadonlyArray2};
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyTuple};
 
@@ -13,11 +14,11 @@ use crate::{
     log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel, ProbThetaGivenDataModel},
     moves::DynEnsembleMove,
     python_bindings::{
+        mixture_models::{dyn_ftheta_ncomp_mm, dyn_mixture_model},
         moves::{diffconv_move, differential_move, hybrid_ddc_move},
         scientific::{normal_1d_deconv, normal_2d_gmm_deconv},
-        toy::{neals_funnel, normal, rosenbrock, normal_1d_mix},
+        toy::{neals_funnel, normal, normal_1d_mix, rosenbrock},
     },
-    python_bindings::mixture_models::{dyn_ftheta_ncomp_mm, dyn_mixture_model}
 };
 
 #[pyclass]
@@ -258,7 +259,6 @@ fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     scientific.add_function(wrap_pyfunction!(normal_2d_gmm_deconv, &scientific)?)?;
 
     scientific.add_function(wrap_pyfunction!(dyn_ftheta_ncomp_mm, &scientific)?)?;
-
 
     model.add_submodule(&toy)?;
     model.add_submodule(&scientific)?;

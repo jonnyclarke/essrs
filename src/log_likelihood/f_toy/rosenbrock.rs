@@ -1,8 +1,7 @@
 use anyhow;
 use ndarray::ArrayView1;
 
-use crate::log_likelihood::LogLikelihoodModel;
-use crate::log_likelihood::ProbDataGivenThetaModel;
+use crate::log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel};
 
 pub struct AnalyticRosenbrockToyLogL {
     a: f64,
@@ -31,7 +30,6 @@ impl LogLikelihoodModel for AnalyticRosenbrockToyLogL {
 }
 
 impl ProbDataGivenThetaModel for AnalyticRosenbrockToyLogL {}
-
 
 #[cfg(test)]
 mod tests {

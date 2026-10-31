@@ -1,13 +1,16 @@
 //! Python log-likelihood factory functions; toy models
 
 use std::sync::Arc;
-use numpy::{PyReadonlyArray1};
+
+use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;
 
 use crate::{
     log_likelihood::f_toy::{
-        AnalyticNealsFunnelToyLogL, AnalyticNormalToyLogL, AnalyticRosenbrockToyLogL, BuildAnalyticNormalMixtureOneD,
-    }, python_bindings::{PyLogLikelihoodModel} //, PyProbDataGivenThetaModel},
+        AnalyticNealsFunnelToyLogL, AnalyticNormalToyLogL, AnalyticRosenbrockToyLogL,
+        BuildAnalyticNormalMixtureOneD,
+    },
+    python_bindings::PyLogLikelihoodModel, //, PyProbDataGivenThetaModel},
 };
 
 #[pyfunction]
@@ -37,17 +40,16 @@ pub fn normal_1d_mix(
     mu: PyReadonlyArray1<f64>,
     sigma: PyReadonlyArray1<f64>,
 ) -> PyLogLikelihoodModel {
-
     PyLogLikelihoodModel {
         model: Arc::new(
             BuildAnalyticNormalMixtureOneD::new(n)
-            .theta(theta.as_array().to_owned())
-            .mu(mu.as_array().to_owned())
-            .sigma(sigma.as_array().to_owned())
-            .build()
+                .theta(theta.as_array().to_owned())
+                .mu(mu.as_array().to_owned())
+                .sigma(sigma.as_array().to_owned())
+                .build(),
         ),
         p_data_g_theta: None,
-        p_theta_g_data: None
+        p_theta_g_data: None,
     }
 }
 

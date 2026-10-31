@@ -1,13 +1,15 @@
-
-
 use std::{any::Any, sync::Arc};
-use anyhow::bail;
-use ndarray::{s, Zip,};
 
-use crate::log_likelihood::{LogLikelihoodModel, ProbThetaGivenDataModel};
-use crate::log_likelihood::mixture::log_sum_exp;
-use crate::functions::transforms::logistic::{logistic, logistic_inverse, logistic_log_jacobian_inplace};
-use crate::functions::transforms::apply_transform_column;
+use anyhow::bail;
+use ndarray::{Zip, s};
+
+use crate::{
+    functions::transforms::{
+        apply_transform_column,
+        logistic::{logistic, logistic_inverse, logistic_log_jacobian_inplace},
+    },
+    log_likelihood::{LogLikelihoodModel, ProbThetaGivenDataModel, mixture::log_sum_exp},
+};
 
 pub struct DynNcompMixtureModel {
     components: Vec<Arc<dyn ProbThetaGivenDataModel>>,
@@ -20,12 +22,18 @@ impl DynNcompMixtureModel {
         let t = components[0].as_ref().type_id();
 
         for c in components.iter() {
-            if t.ne(&c.as_ref().type_id()) {bail!("mixture model components are not identical")}
+            if t.ne(&c.as_ref().type_id()) {
+                bail!("mixture model components are not identical")
+            }
         }
 
         let n_comp = components.len();
         let n_theta = n_comp - 1;
-        Ok(Self {components, n_comp, n_theta})
+        Ok(Self {
+            components,
+            n_comp,
+            n_theta,
+        })
     }
 }
 
@@ -44,8 +52,7 @@ impl LogLikelihoodModel for DynNcompMixtureModel {
         &self,
         physical: ndarray::prelude::ArrayView2<f64>,
         mut internal: ndarray::prelude::ArrayViewMut2<f64>,
-    ) -> anyhow::Result<()>
-    {
+    ) -> anyhow::Result<()> {
         internal.assign(&physical);
         let mut l = self.n_theta - self.components[0].get_n_parameters();
         let mut r = self.n_theta;
@@ -61,7 +68,7 @@ impl LogLikelihoodModel for DynNcompMixtureModel {
 
             c.columnar_transform_physical_to_internal(
                 physical.slice(s![.., l..r]),
-                internal.slice_mut(s![.., l..r])
+                internal.slice_mut(s![.., l..r]),
             )?
         }
 
@@ -72,8 +79,7 @@ impl LogLikelihoodModel for DynNcompMixtureModel {
         &self,
         internal: ndarray::prelude::ArrayView2<f64>,
         mut physical: ndarray::prelude::ArrayViewMut2<f64>,
-    ) -> anyhow::Result<()>
-    {
+    ) -> anyhow::Result<()> {
         physical.assign(&internal);
         let mut l = self.n_theta - self.components[0].get_n_parameters();
         let mut r = self.n_theta;
@@ -89,7 +95,7 @@ impl LogLikelihoodModel for DynNcompMixtureModel {
 
             c.columnar_transform_internal_to_physical(
                 internal.slice(s![.., l..r]),
-                physical.slice_mut(s![.., l..r])
+                physical.slice_mut(s![.., l..r]),
             )?
         }
 
@@ -101,8 +107,7 @@ impl LogLikelihoodModel for DynNcompMixtureModel {
         log_jacobian: &mut f64,
         internal: ndarray::prelude::ArrayView1<f64>,
         physical: &mut ndarray::prelude::ArrayViewMut1<f64>,
-    ) -> anyhow::Result<()>
-    {
+    ) -> anyhow::Result<()> {
         physical.assign(&internal);
         let mut l = self.n_theta - self.components[0].get_n_parameters();
         let mut r = self.n_theta;
@@ -126,28 +131,26 @@ impl LogLikelihoodModel for DynNcompMixtureModel {
     }
 
     fn log_likelihood(&self, parameters: ndarray::prelude::ArrayView1<f64>) -> anyhow::Result<f64> {
-
         let thetas = parameters.slice(s![..self.n_theta]);
 
         let l = self.get_n_parameters() - self.components[self.n_comp - 1].get_n_parameters();
         let r = self.get_n_parameters();
 
-        let mut ll_i = 
-            self.components[self.n_comp - 1].log_likelihood_pointwise(parameters.slice(s![l..r]))? +
-            (1.0_f64 - thetas.sum()).ln();
+        let mut ll_i = self.components[self.n_comp - 1]
+            .log_likelihood_pointwise(parameters.slice(s![l..r]))?
+            + (1.0_f64 - thetas.sum()).ln();
 
         if ll_i.iter().any(|x| x.is_infinite()) {
             return Ok(f64::NEG_INFINITY);
         }
         let mut l: usize = self.n_theta;
-        for i in 0..self.n_comp-1 {
+        for i in 0..self.n_comp - 1 {
             let r: usize = l + self.components[i].get_n_parameters();
             // TODO: this currently requires extensive allocation -- trade-off for dynamic usability?
-            let ll_j =
-                self.components[i].log_likelihood_pointwise(parameters.slice(s![l..r]))? +
-                thetas[i].ln();
+            let ll_j = self.components[i].log_likelihood_pointwise(parameters.slice(s![l..r]))?
+                + thetas[i].ln();
             l = r;
-            
+
             if ll_j.iter().any(|x| x.is_infinite()) {
                 return Ok(f64::NEG_INFINITY);
             }
@@ -155,7 +158,8 @@ impl LogLikelihoodModel for DynNcompMixtureModel {
             Zip::from(ll_i.view_mut())
                 .and(ll_j.view())
                 .for_each(|ll_cumulative, &ll_kth| {
-                    *ll_cumulative = log_sum_exp(*ll_cumulative, ll_kth).expect("failure in log_sum_exp");
+                    *ll_cumulative =
+                        log_sum_exp(*ll_cumulative, ll_kth).expect("failure in log_sum_exp");
                 });
         }
 

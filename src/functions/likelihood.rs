@@ -3,12 +3,8 @@
 //TODO: clean these function up
 mod normal_n_dimensional;
 pub use normal_n_dimensional::{
-    ndim_to_norm_const,
-    covariance_to_cholesky_l,
-    cholesky_l_to_log_det,
-    mahalanobis_from_cholesky,
-    multivariate_gaussian_log_likelihood,
-    normal_nd_ll
+    cholesky_l_to_log_det, covariance_to_cholesky_l, mahalanobis_from_cholesky,
+    multivariate_gaussian_log_likelihood, ndim_to_norm_const, normal_nd_ll,
 };
 
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
