@@ -79,7 +79,7 @@ impl<M, S, C> BuildAnalyticNormalNDimensional<M, S, C> {
     pub fn correlation(
         self,
         correlation: Array1<f64>,
-    ) -> BuildAnalyticNormalNDimensional<M, S, Missing> {
+    ) -> BuildAnalyticNormalNDimensional<M, S, Set> {
         let k = correlation.len();
         assert_eq!(k, self.n_dimensions * (self.n_dimensions - 1) / 2);
 

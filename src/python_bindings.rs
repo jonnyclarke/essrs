@@ -17,7 +17,7 @@ use crate::{
         mixture_models::{dyn_ftheta_ncomp_mm},
         moves::{diffconv_move, differential_move, hybrid_ddc_move},
         scientific::{normal_1d_deconv, normal_2d_gmm_deconv},
-        toy::{dyn_fdata_ncomp_mm, neals_funnel, normal_1d, normal_1d_mix, rosenbrock},
+        toy::{dyn_fdata_ncomp_mm, neals_funnel, normal_1d, normal_nd, normal_1d_mix, rosenbrock},
     },
 };
 
@@ -249,6 +249,7 @@ fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let toy = PyModule::new(m.py(), "toy")?;
     toy.add_function(wrap_pyfunction!(neals_funnel, &toy)?)?;
     toy.add_function(wrap_pyfunction!(normal_1d, &toy)?)?;
+    toy.add_function(wrap_pyfunction!(normal_nd, &toy)?)?;
     toy.add_function(wrap_pyfunction!(normal_1d_mix, &toy)?)?; // TODO: replace this with generic optimised implementation
     toy.add_function(wrap_pyfunction!(rosenbrock, &toy)?)?;
 

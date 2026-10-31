@@ -7,12 +7,13 @@ use pyo3::prelude::*;
 
 use crate::{
     log_likelihood::f_toy::{
-        AnalyticNealsFunnelToyLogL, AnalyticNormalToyLogL, AnalyticRosenbrockToyLogL,
-        BuildAnalyticNormalMixtureOneD,
+        AnalyticNealsFunnelToyLogL, AnalyticRosenbrockToyLogL,
+        normal::{AnalyticNormalToyLogL, BuildAnalyticNormalMixtureOneD},
         DynMixtureModelDistributionSampler
     },
     python_bindings::PyLogLikelihoodModel,
 };
+use crate::log_likelihood::f_toy::normal::BuildAnalyticNormalNDimensional;
 
 #[pyfunction]
 pub fn dyn_fdata_ncomp_mm<'py>(
@@ -55,6 +56,26 @@ pub fn normal_1d(mu: f64, sigma: f64) -> PyLogLikelihoodModel {
     PyLogLikelihoodModel {
         model: model.clone(),
         p_data_g_theta: Some(model),
+        p_theta_g_data: None,
+    }
+}
+
+#[pyfunction]
+pub fn normal_nd(
+    n_dimensions: usize,
+    mu: PyReadonlyArray1<f64>,
+    sigma: PyReadonlyArray1<f64>,
+    correlation: PyReadonlyArray1<f64>,
+) -> PyLogLikelihoodModel {
+    PyLogLikelihoodModel {
+        model: Arc::new(
+            BuildAnalyticNormalNDimensional::new(n_dimensions)
+                .mu(mu.as_array().to_owned())
+                .sigma(sigma.as_array().to_owned())
+                .correlation(correlation.as_array().to_owned())
+                .build(),
+        ),
+        p_data_g_theta: None,
         p_theta_g_data: None,
     }
 }
