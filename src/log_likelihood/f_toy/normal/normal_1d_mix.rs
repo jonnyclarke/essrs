@@ -2,13 +2,9 @@ use anyhow;
 use ndarray::{Array1, ArrayView1};
 
 use crate::{
-    functions::{
-        likelihood::{log_normalised_gaussian_s2},
-        numerical::log_sum_exp,
-    },
-    log_likelihood::{LogLikelihoodModel},
+    functions::{likelihood::log_normalised_gaussian_s2, numerical::log_sum_exp},
+    log_likelihood::LogLikelihoodModel,
 };
-
 
 pub struct AnalyticNormalMixtureOneD {
     n: usize,

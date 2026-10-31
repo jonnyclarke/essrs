@@ -4,6 +4,7 @@
 // ! * would require each function to also return a point-wise array-type of log-likelihoods
 
 use std::sync::Arc;
+
 use ndarray::Array1;
 
 use crate::{

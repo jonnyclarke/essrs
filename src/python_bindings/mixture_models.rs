@@ -4,8 +4,7 @@ use anyhow::Context;
 use pyo3::prelude::*;
 
 use crate::{
-    log_likelihood::f_scientific::DynNcompMixtureModel,
-    python_bindings::PyLogLikelihoodModel,
+    log_likelihood::f_scientific::DynNcompMixtureModel, python_bindings::PyLogLikelihoodModel,
 };
 
 #[pyfunction]

@@ -1,19 +1,20 @@
 //! Python log-likelihood factory functions; toy models
 
 use std::sync::Arc;
+
 use anyhow::Context;
 use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;
 
 use crate::{
     log_likelihood::f_toy::{
-        AnalyticNealsFunnelToyLogL, AnalyticRosenbrockToyLogL,
-        normal::{AnalyticNormalToyLogL, BuildAnalyticNormalMixtureOneD},
-        DynMixtureModelDistributionSampler
+        AnalyticNealsFunnelToyLogL, AnalyticRosenbrockToyLogL, DynMixtureModelDistributionSampler,
+        normal::{
+            AnalyticNormalToyLogL, BuildAnalyticNormalMixtureOneD, BuildAnalyticNormalNDimensional,
+        },
     },
     python_bindings::PyLogLikelihoodModel,
 };
-use crate::log_likelihood::f_toy::normal::BuildAnalyticNormalNDimensional;
 
 #[pyfunction]
 pub fn dyn_fdata_ncomp_mm<'py>(

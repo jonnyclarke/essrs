@@ -1,10 +1,8 @@
 use anyhow;
-use ndarray::{ArrayView1};
+use ndarray::ArrayView1;
 
 use crate::{
-    functions::{
-        likelihood::log_normalised_gaussian,
-    },
+    functions::likelihood::log_normalised_gaussian,
     log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel},
 };
 

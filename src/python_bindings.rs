@@ -14,10 +14,10 @@ use crate::{
     log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel, ProbThetaGivenDataModel},
     moves::DynEnsembleMove,
     python_bindings::{
-        mixture_models::{dyn_ftheta_ncomp_mm},
+        mixture_models::dyn_ftheta_ncomp_mm,
         moves::{diffconv_move, differential_move, hybrid_ddc_move},
         scientific::{normal_1d_deconv, normal_2d_gmm_deconv},
-        toy::{dyn_fdata_ncomp_mm, neals_funnel, normal_1d, normal_nd, normal_1d_mix, rosenbrock},
+        toy::{dyn_fdata_ncomp_mm, neals_funnel, normal_1d, normal_1d_mix, normal_nd, rosenbrock},
     },
 };
 

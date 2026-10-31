@@ -1,4 +1,3 @@
-
 mod normal_1d_mix;
 pub use normal_1d_mix::{AnalyticNormalMixtureOneD, BuildAnalyticNormalMixtureOneD};
 
