@@ -1,11 +1,7 @@
 //! Pre-definition of common log-likelihood functions for simplicity.
 
 //TODO: clean these function up
-mod normal_n_dimensional;
-pub use normal_n_dimensional::{
-    cholesky_l_to_log_det, covariance_to_cholesky_l, mahalanobis_from_cholesky,
-    multivariate_gaussian_log_likelihood, ndim_to_norm_const, normal_nd_ll,
-};
+pub mod normal_n_dimensional;
 
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
 /// Function to compute the normalised normal distribution.
