@@ -1,7 +1,7 @@
 //! Implementation of statistical uncertainty deconvolution
 
 use anyhow;
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2, Zip};
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2, Zip, s};
 
 use crate::{
     functions::{
@@ -9,6 +9,7 @@ use crate::{
         numerical::log_sum_exp,
         transforms::{
             apply_inplace_multi_column_transform, apply_transform_column,
+            logistic::{logistic, logistic_inverse, logistic_log_jacobian_inplace},
             ordseq::{ordinal_sequencer, ordinal_sequencer_inverse},
             softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
             tanh::{tanh_inverse, tanh_log_jacobian_inplace, tanh_x},
@@ -17,7 +18,7 @@ use crate::{
     log_likelihood::LogLikelihoodModel,
 };
 
-pub const N_PARAMETERS_NORMAL_1D: usize = 5;
+pub const N_PARAMETERS_NORMAL_2D: usize = 5;
 
 /// Gaussian Mixture model
 /// 2 Dimensions
@@ -70,8 +71,9 @@ impl GaussianMixModel2DimUnDeConv {
         self.n_components
     }
 
+    /// We need to ensure we account for the theta values
     fn kth_offset(&self, k: usize) -> usize {
-        k * N_PARAMETERS_NORMAL_1D
+        self.n_components - 1 + k * N_PARAMETERS_NORMAL_2D
     }
 
     fn get_index_kth_x_mu(&self, k: usize) -> usize {
@@ -97,7 +99,7 @@ impl GaussianMixModel2DimUnDeConv {
 
 impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
     fn get_n_parameters(&self) -> usize {
-        self.get_n_components() * N_PARAMETERS_NORMAL_1D
+        self.get_n_components() - 1 + self.get_n_components() * N_PARAMETERS_NORMAL_2D
     }
 
     fn columnar_transform_physical_to_internal(
@@ -108,6 +110,10 @@ impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
         let n_comp = self.get_n_components();
 
         internal.assign(&physical);
+
+        for i in 0..n_comp - 1 {
+            apply_transform_column(logistic_inverse, &mut internal, i)?;
+        }
 
         for k in 0..n_comp {
             apply_transform_column(softplus_inverse, &mut internal, self.get_index_kth_x_er(k))?;
@@ -148,6 +154,10 @@ impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
 
         physical.assign(&internal);
 
+        for i in 0..n_comp - 1 {
+            apply_transform_column(logistic, &mut physical, i)?;
+        }
+
         for k in 0..n_comp {
             // for all ordinal mean values, except anchor point, we first apply softplus transform to map unconstrained value to >0
             // we then add it to the (k-1)^th value
@@ -180,6 +190,10 @@ impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
         let n_comp = self.get_n_components();
 
         physical.assign(&internal);
+
+        for i in 0..n_comp - 1 {
+            logistic_log_jacobian_inplace(&mut physical[i], log_jacobian)?;
+        }
 
         for k in 0..n_comp {
             match k {
@@ -230,21 +244,27 @@ impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
         // this array will aggregate all of the contributions from separate gaussians together
         let mut ll_i = Array1::<f64>::zeros(n_data);
 
+        let mut thetas = physical.slice(s![0..self.n_components - 1]).to_vec();
+        let last_theta = 1.0_f64 - thetas.iter().sum::<f64>();
+
+        thetas.push(last_theta);
+
         for k in 0..n_comp {
             for i in 0..n_data {
                 // logic for 2d normal log-likelihood
-                let ll_ik = log_normal_2d(
-                    x[i],
-                    y[i],
-                    physical[self.get_index_kth_x_mu(k)],
-                    physical[self.get_index_kth_y_mu(k)],
-                    a[i] + physical[self.get_index_kth_x_er(k)].powi(2),
-                    bc[i]
-                        + (physical[self.get_index_kth_x_er(k)]
-                            * physical[self.get_index_kth_y_er(k)]
-                            * physical[self.get_index_kth_p(k)]),
-                    d[i] + physical[self.get_index_kth_y_er(k)].powi(2),
-                );
+                let ll_ik = thetas[k].ln()
+                    + log_normal_2d(
+                        x[i],
+                        y[i],
+                        physical[self.get_index_kth_x_mu(k)],
+                        physical[self.get_index_kth_y_mu(k)],
+                        a[i] + physical[self.get_index_kth_x_er(k)].powi(2),
+                        bc[i]
+                            + (physical[self.get_index_kth_x_er(k)]
+                                * physical[self.get_index_kth_y_er(k)]
+                                * physical[self.get_index_kth_p(k)]),
+                        d[i] + physical[self.get_index_kth_y_er(k)].powi(2),
+                    );
                 match k {
                     0 => ll_i[i] = ll_ik,
                     _ => ll_i[i] = log_sum_exp(ll_i[i], ll_ik)?,

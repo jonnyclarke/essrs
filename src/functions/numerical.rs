@@ -4,17 +4,31 @@
 use ndarray::{Array1, ArrayView1};
 use thiserror::Error;
 
+/// Enum containing error from numerical functions
 #[derive(Debug, Error)]
 pub enum NumericalError {
+    /// Invalid argument passed to a computation
     #[error("non-finite argument passed to {computation}: {a}")]
-    InvalidArgumentError { computation: &'static str, a: f64 },
+    InvalidArgumentError { 
+        ///.
+        computation: &'static str,
+        ///.
+        a: f64
+    },
 
+    /// Invalid inputs to log diff-exp
     #[error(
         "invalid values passed to `log_diff_exp`: {a} <= {b} :: results in ln(-0) which is undefined"
     )]
-    InvalidLogDiffExpInputs { a: f64, b: f64 },
+    InvalidLogDiffExpInputs {
+        ///.
+        a: f64,
+        ///.
+        b: f64
+    },
 }
 
+///
 pub fn apply_numerical_f_array1<F>(
     f: F,
     a_arr: ArrayView1<f64>,
@@ -32,6 +46,7 @@ where
     Ok(out)
 }
 
+/// Numerically robust method to take difference of exponentials from exponents
 pub fn log_diff_exp(a: f64, b: f64) -> Result<f64, NumericalError> {
     if a <= b {
         // Difference would be zero or negative → log undefined

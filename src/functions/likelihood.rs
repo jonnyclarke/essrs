@@ -1,5 +1,8 @@
 //! Pre-definition of common log-likelihood functions for simplicity.
 
+//TODO: clean these function up
+pub mod normal_n_dimensional;
+
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
 /// Function to compute the normalised normal distribution.
 ///

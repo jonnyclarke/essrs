@@ -1,7 +1,7 @@
 use anyhow;
 use ndarray::ArrayView1;
 
-use crate::log_likelihood::LogLikelihoodModel;
+use crate::log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel};
 
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
 /// Likelihood construction of the 'Neals Funnel' toy problem.
@@ -54,6 +54,8 @@ impl LogLikelihoodModel for AnalyticNealsFunnelToyLogL {
         Ok(ll)
     }
 }
+
+impl ProbDataGivenThetaModel for AnalyticNealsFunnelToyLogL {}
 
 #[cfg(test)]
 mod tests {

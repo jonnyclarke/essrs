@@ -1,3 +1,5 @@
+//! Functions for applying softplus transform
+
 use crate::functions::{
     numerical::{log_diff_exp, log_sum_exp},
     transforms::TransformError,
@@ -36,12 +38,14 @@ pub fn softplus(x: f64) -> Result<f64, TransformError> {
     Ok(y)
 }
 
+/// Compute softplus with log-jacobian transform
 pub fn softplus_log_jacobian(x: f64) -> Result<(f64, f64), TransformError> {
     let y = softplus(x)?;
 
     Ok((y, x - y))
 }
 
+/// Compute softplus transform in place and modify mutable log_jacobian argument
 pub fn softplus_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> Result<(), TransformError> {
     let (s, lj) = softplus_log_jacobian(*x)?;
 

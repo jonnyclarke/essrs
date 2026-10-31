@@ -1,7 +1,7 @@
 use anyhow;
 use essrs::{
     ess::EnsembleSliceSampler,
-    log_likelihood::f_toy::AnalyticNormalToyLogL, // Likelihood model for 1d Gaussian data with errors
+    log_likelihood::f_toy::normal::AnalyticNormalToyLogL, // Likelihood model for 1d Gaussian data with errors
     moves::differential_move::DifferentialMove,
 };
 use ndarray::array;

@@ -12,18 +12,28 @@ use thiserror::Error;
 
 use crate::functions::numerical::NumericalError;
 
+///.
 #[derive(Debug, Error)]
 pub enum TransformError {
+    ///.
     #[error("invalid value passed to softplus_inverse: {value} <= 0")]
-    InvalidSoftplusInput { value: f64 },
+    InvalidSoftplusInput { 
+        ///.
+        value: f64
+    },
 
+    ///.
     #[error("invalid value passed to tanh_inverse: -1 !<= {value} !<= 1")]
-    InvalidAtanhInput { value: f64 },
-
+    InvalidAtanhInput {
+        ///.
+        value: f64 
+    },
+    ///.
     #[error("'{computation}' computation failed: {source}")]
     Transform {
+        ///.
         computation: &'static str,
-
+        ///.
         #[source]
         source: NumericalError,
     },
