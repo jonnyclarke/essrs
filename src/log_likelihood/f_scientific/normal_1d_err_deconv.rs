@@ -11,7 +11,7 @@ use crate::{
             softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
         },
     },
-    log_likelihood::LogLikelihoodModel,
+    log_likelihood::{LogLikelihoodModel, ProbThetaGivenDataModel},
 };
 
 pub struct GaussianLl1dDataErrors {
@@ -87,6 +87,22 @@ impl LogLikelihoodModel for GaussianLl1dDataErrors {
             .zip(self.sigma_sqr.iter())
             .map(|(v, e2)| log_normalised_gaussian_s2(*v, mu, sigma2 + e2))
             .sum::<f64>();
+
+        Ok(ll)
+    }
+}
+
+impl ProbThetaGivenDataModel for GaussianLl1dDataErrors {
+    fn log_likelihood_pointwise(&self, parameters: ArrayView1<f64>) -> anyhow::Result<Array1<f64>> {
+        let mu = parameters[0];
+        let sigma2 = parameters[1].powi(2);
+
+        let ll = Array1::from_iter(
+            self.mu
+                .iter()
+                .zip(self.sigma_sqr.iter())
+                .map(|(v, e2)| log_normalised_gaussian_s2(*v, mu, sigma2 + e2)),
+        );
 
         Ok(ll)
     }

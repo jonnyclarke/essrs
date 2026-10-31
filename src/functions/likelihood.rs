@@ -1,5 +1,10 @@
 //! Pre-definition of common log-likelihood functions for simplicity.
 
+//TODO: clean these function up
+pub mod normal_n_dimensional;
+
+pub const TWO_PI: f64 = 2.0 * std::f64::consts::PI;
+
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
 /// Function to compute the normalised normal distribution.
 ///
@@ -52,7 +57,7 @@ pub fn log_normalised_gaussian_s2(x: f64, mu: f64, sigma2: f64) -> f64 {
     -0.5 * ((x - mu).powi(2) / sigma2) + -0.5 * (2.0 * std::f64::consts::PI * sigma2).ln()
 }
 
-/// Evaluate the normal distribution in two dimensions; neglecting the 2pi factors.
+/// Evaluate the normal distribution in two dimensions.
 ///
 /// # Arguments
 /// `x` - x-coordinate of the point to be evaluated.
@@ -66,9 +71,12 @@ pub fn log_normal_2d(x: f64, y: f64, mu_x: f64, mu_y: f64, a: f64, bc: f64, d: f
     let dx = mu_x - x;
     let dy = mu_y - y;
 
+    let two_pi_const = TWO_PI.ln();
     let det = a * d - bc.powi(2);
+    let log_det = det.ln();
+    let matmul = (dx * (d * dx - bc * dy) + dy * (a * dy - bc * dx)) / det;
 
-    -0.5 * det.ln() - 0.5 * (dx * (d * dx - bc * dy) + dy * (a * dy - bc * dx)) / det // constant factor of pi neglected
+    -0.5 * (log_det + matmul) - two_pi_const
 }
 
 #[cfg(test)]
@@ -133,13 +141,13 @@ mod tests {
         0.0, 0.0,
         0.0, 0.0,
         2.0, 0.3, 1.5,
-        -0.5_f64 * (1.5_f64 * 2.0_f64 - 0.3_f64 * 0.3_f64).ln()
+        -0.5_f64 * (1.5_f64 * 2.0_f64 - 0.3_f64 * 0.3_f64).ln() - TWO_PI.ln()
     )] // test centroid value which is simply determinant
     #[case(
         1.0, 2.0,
         0.0, 0.0,
         1.0, 0.0, 1.0,
-        -0.5 * (1.0 * 1.0 + 2.0 * 2.0)
+        -0.5 * (1.0 * 1.0 + 2.0 * 2.0 ) - TWO_PI.ln()
     )] // determinant == 0
     fn test_log_normal_2d(
         #[case] x: f64,

@@ -1,7 +1,9 @@
 use anyhow;
 use ndarray::ArrayView1;
 
-use crate::log_likelihood::LogLikelihoodModel;
+use crate::log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel};
+
+const N_PARAMETERS_ROSENBROCK: usize = 2;
 
 pub struct AnalyticRosenbrockToyLogL {
     a: f64,
@@ -16,7 +18,7 @@ impl AnalyticRosenbrockToyLogL {
 
 impl LogLikelihoodModel for AnalyticRosenbrockToyLogL {
     fn get_n_parameters(&self) -> usize {
-        2
+        N_PARAMETERS_ROSENBROCK
     }
 
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
@@ -28,6 +30,8 @@ impl LogLikelihoodModel for AnalyticRosenbrockToyLogL {
         Ok(ll)
     }
 }
+
+impl ProbDataGivenThetaModel for AnalyticRosenbrockToyLogL {}
 
 #[cfg(test)]
 mod tests {
@@ -41,6 +45,15 @@ mod tests {
         let ll_rosenbrock = AnalyticRosenbrockToyLogL::new(1.0, 3.0);
         let parameters = array![1.0, 1.0];
         let _ = ll_rosenbrock.log_likelihood(parameters.view());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_n_parameters() -> anyhow::Result<()> {
+        let ll_rosenbrock = AnalyticRosenbrockToyLogL::new(1.0, 3.0);
+
+        assert_eq!(ll_rosenbrock.get_n_parameters(), N_PARAMETERS_ROSENBROCK);
 
         Ok(())
     }

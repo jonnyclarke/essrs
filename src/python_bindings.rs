@@ -1,26 +1,31 @@
 //! Construction of Python Binding
+
 mod moves;
 mod scientific;
 mod toy;
+
+use std::sync::Arc;
 
 use numpy::{PyArray2, PyArray3, PyReadonlyArray2};
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyTuple};
 
 use crate::{
     ess::EnsembleSliceSampler,
-    log_likelihood::LogLikelihoodModel,
+    log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel, ProbThetaGivenDataModel},
     moves::DynEnsembleMove,
     python_bindings::{
         moves::{diffconv_move, differential_move, hybrid_ddc_move},
-        scientific::{normal_1d_deconv, normal_2d_gmm_deconv},
-        toy::{neals_funnel, normal, rosenbrock},
+        scientific::{dyn_ftheta_ncomp_mm, normal_1d_deconv, normal_2d_gmm_deconv},
+        toy::{dyn_fdata_ncomp_mm, neals_funnel, normal_1d, normal_1d_mix, normal_nd, rosenbrock},
     },
 };
 
 #[pyclass]
 pub struct PyLogLikelihoodModel {
     // Own the configured Rust model.
-    inner: Box<dyn LogLikelihoodModel>,
+    model: Arc<dyn LogLikelihoodModel>,
+    p_data_g_theta: Option<Arc<dyn ProbDataGivenThetaModel>>,
+    p_theta_g_data: Option<Arc<dyn ProbThetaGivenDataModel>>,
 }
 
 #[pyclass]
@@ -179,7 +184,7 @@ fn run_mcmc<'py>(
     let n_walkers = initial_conditions.nrows();
     let n_parameters = initial_conditions.ncols();
 
-    if n_parameters != log_likelihood.inner.get_n_parameters() {
+    if n_parameters != log_likelihood.model.get_n_parameters() {
         return Err(PyValueError::new_err(
             "Initial-condition columns must match model parameters",
         ));
@@ -193,7 +198,7 @@ fn run_mcmc<'py>(
 
     // Copy the Rust selection values out of the borrowed Python
     // wrappers. The sampler owns these values for the whole run.
-    let model = &log_likelihood.inner;
+    let model = &log_likelihood.model;
     let burn = &burn_in_move.inner;
     let sampling = &sampling_move.inner;
 
@@ -230,6 +235,7 @@ fn run_mcmc<'py>(
 fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Core Python wrapper classes
     m.add_class::<PyLogLikelihoodModel>()?;
+    // m.add_class::<PyProbDataGivenThetaModel>()?;
     m.add_class::<PyEnsembleConfig>()?;
     m.add_class::<PyDynMoveHandler>()?;
 
@@ -241,12 +247,18 @@ fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     let toy = PyModule::new(m.py(), "toy")?;
     toy.add_function(wrap_pyfunction!(neals_funnel, &toy)?)?;
-    toy.add_function(wrap_pyfunction!(normal, &toy)?)?;
-    toy.add_function(wrap_pyfunction!(rosenbrock, m)?)?;
+    toy.add_function(wrap_pyfunction!(normal_1d, &toy)?)?;
+    toy.add_function(wrap_pyfunction!(normal_nd, &toy)?)?;
+    toy.add_function(wrap_pyfunction!(normal_1d_mix, &toy)?)?; // TODO: replace this with generic optimised implementation
+    toy.add_function(wrap_pyfunction!(rosenbrock, &toy)?)?;
+
+    toy.add_function(wrap_pyfunction!(dyn_fdata_ncomp_mm, &toy)?)?;
 
     let scientific = PyModule::new(m.py(), "scientific")?;
-    scientific.add_function(wrap_pyfunction!(normal_1d_deconv, &toy)?)?;
-    scientific.add_function(wrap_pyfunction!(normal_2d_gmm_deconv, &toy)?)?;
+    scientific.add_function(wrap_pyfunction!(normal_1d_deconv, &scientific)?)?;
+    scientific.add_function(wrap_pyfunction!(normal_2d_gmm_deconv, &scientific)?)?;
+
+    scientific.add_function(wrap_pyfunction!(dyn_ftheta_ncomp_mm, &scientific)?)?;
 
     model.add_submodule(&toy)?;
     model.add_submodule(&scientific)?;
