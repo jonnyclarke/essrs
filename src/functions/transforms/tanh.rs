@@ -1,3 +1,5 @@
+//! Functions for applying tanh parameter transforms
+
 use crate::functions::transforms::TransformError;
 
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
@@ -22,6 +24,7 @@ pub fn tanh_log_jacobian(x: f64) -> Result<(f64, f64), TransformError> {
     Ok((y, lj))
 }
 
+/// In place function computing tanh transform and log jacobian
 pub fn tanh_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> Result<(), TransformError> {
     let (y, lj) = tanh_log_jacobian(*x)?;
 

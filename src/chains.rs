@@ -25,10 +25,13 @@ pub trait ChainBuffer {
     /// Return the number of parameters;
     fn get_n_parameters(&self) -> usize;
 
+    /// increment the number of state/log-likelihood pairs that have been stored
     fn increment_n_stored(&mut self);
 
+    /// get a reference to the 'next' log-likelihood vector in order to cast values directly in
     fn get_next_log_likelihood_vec<'a>(&'a mut self) -> ArrayViewMut1<'a, f64>;
 
+    /// get a reference to the 'next' state matrix in order to cast values directly in
     fn get_next_state_matrix<'a>(&'a mut self) -> ArrayViewMut2<'a, f64>;
 
     /// Extract the three-dimensional state matrix and output (can have empty buffer!)

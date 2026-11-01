@@ -1,3 +1,5 @@
+//! Functions for applying logistic transform
+
 use crate::functions::transforms::TransformError;
 
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]

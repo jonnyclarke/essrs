@@ -23,6 +23,7 @@ pub fn ln_prior_exponential(x: f64, lambda: f64, ll: &mut f64) {
     *ll += lambda.ln() - lambda * x
 }
 
+/// Normal distribution prior
 pub fn ln_prior_normal(x: f64, mu: f64, sigma: f64, ll: &mut f64) {
     *ll += log_normalised_gaussian(x, mu, sigma)
 }

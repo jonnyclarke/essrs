@@ -1,7 +1,9 @@
 use anyhow;
 use ndarray::ArrayView1;
 
-use crate::log_likelihood::LogLikelihoodModel;
+use crate::log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel};
+
+const N_PARAMETERS_NEALS_FUNNEL: usize = 2;
 
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
 /// Likelihood construction of the 'Neals Funnel' toy problem.
@@ -41,7 +43,7 @@ impl Default for AnalyticNealsFunnelToyLogL {
 
 impl LogLikelihoodModel for AnalyticNealsFunnelToyLogL {
     fn get_n_parameters(&self) -> usize {
-        2
+        N_PARAMETERS_NEALS_FUNNEL
     }
 
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
@@ -55,6 +57,8 @@ impl LogLikelihoodModel for AnalyticNealsFunnelToyLogL {
     }
 }
 
+impl ProbDataGivenThetaModel for AnalyticNealsFunnelToyLogL {}
+
 #[cfg(test)]
 mod tests {
 
@@ -67,6 +71,18 @@ mod tests {
         let ll_neals_funnel = AnalyticNealsFunnelToyLogL::default();
         let parameters = array![1.0, 1.0];
         let _ = ll_neals_funnel.log_likelihood(parameters.view());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_n_parameters() -> anyhow::Result<()> {
+        let ll_neals_funnel = AnalyticNealsFunnelToyLogL::default();
+
+        assert_eq!(
+            ll_neals_funnel.get_n_parameters(),
+            N_PARAMETERS_NEALS_FUNNEL
+        );
 
         Ok(())
     }

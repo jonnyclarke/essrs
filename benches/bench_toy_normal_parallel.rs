@@ -2,7 +2,7 @@ use anyhow;
 use criterion::{Criterion, criterion_group, criterion_main};
 use essrs::{
     ess::EnsembleSliceSampler,
-    log_likelihood::{f_toy::AnalyticNormalToyLogL, random_normal_points},
+    log_likelihood::{f_toy::normal::AnalyticNormalToyLogL, random_normal_points},
     moves::differential_move::DifferentialMove,
 };
 use ndarray::Axis;

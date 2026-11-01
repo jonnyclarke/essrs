@@ -154,7 +154,7 @@ mod tests {
     use super::*;
     use crate::{
         functions::likelihood::log_normalised_gaussian,
-        log_likelihood::f_toy::AnalyticNormalToyLogL,
+        log_likelihood::f_toy::normal::AnalyticNormalToyLogL,
     };
 
     fn test_ll() -> AnalyticNormalToyLogL {

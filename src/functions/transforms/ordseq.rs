@@ -1,3 +1,5 @@
+//! Functions for applying Ordinal Sequencing transform
+
 // TODO: error implementation for these functions.
 
 use crate::functions::transforms::TransformError;
@@ -8,6 +10,7 @@ pub fn ordinal_sequencer(x0: f64, x1: &mut f64) -> Result<(), TransformError> {
     Ok(())
 }
 
+/// Inverse of ordinal sequencing
 pub fn ordinal_sequencer_inverse(x0: f64, x1_prime: &mut f64) -> Result<(), TransformError> {
     *x1_prime -= x0;
     Ok(())

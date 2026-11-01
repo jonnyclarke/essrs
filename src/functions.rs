@@ -5,6 +5,7 @@
 //! * priors: common priors available for use in likelihood functions
 //! * utility: function wrappers to apply column wise to a 2d array
 
+pub mod helper;
 pub mod likelihood;
 pub mod numerical;
 pub mod priors;
