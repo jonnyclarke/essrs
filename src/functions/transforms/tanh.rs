@@ -8,6 +8,8 @@ use anyhow::ensure;
 /// $$
 /// y = \tanh\left( x \right) = \frac{\sinh\left(x\right)}{\cosh\left( x \right)}
 /// $$
+///
+/// # Errors
 pub fn tanh_x(x: f64) -> anyhow::Result<f64> {
     Ok(x.tanh())
 }
@@ -18,6 +20,9 @@ pub fn tanh_x(x: f64) -> anyhow::Result<f64> {
 /// $$
 /// y = \tanh\left( x \right) = \frac{\sinh\left(x\right)}{\cosh\left( x \right)}
 /// $$
+///
+/// # Errors
+/// * propagate `tanh(x)` error
 pub fn tanh_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
     let y = tanh_x(x)?;
     let lj = (1.0 - y.powi(2)).ln();
@@ -25,6 +30,9 @@ pub fn tanh_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
 }
 
 /// In place function computing tanh transform and log jacobian
+///
+/// # Errors
+/// * propagate `tanh_log_jacobian` error
 pub fn tanh_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Result<()> {
     let (y, lj) = tanh_log_jacobian(*x)?;
 
@@ -40,6 +48,9 @@ pub fn tanh_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Result<()
 /// $$
 /// x = \atanh\left( x \right)
 /// $$
+///
+/// # Errors
+/// * argument outside bounds of arctanh: -1 < y < 1
 pub fn tanh_inverse(y: f64) -> anyhow::Result<f64> {
     ensure!(
         y.gt(&-1.0_f64) && y.lt(&1.0_f64),

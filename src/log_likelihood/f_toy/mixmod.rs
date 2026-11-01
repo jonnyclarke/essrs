@@ -10,12 +10,25 @@ use crate::{
     log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel},
 };
 
-pub struct DynMixtureModelDistributionSampler {
+/// Wrapper to enable generic mixture models -- python binding
+///
+/// # Fields:
+/// * theta: Array of component weights. All values should be positive. They should sum to < 1. The length should be {#components - 1} as weight of final component is (1 - sum(theta)).
+/// * components: Vector of log-likelihood models. These should be toy 'distribution sampler' models that test P(data|theta).
+pub struct DynNcompMixtureModelProbData {
     theta: Array1<f64>,
     components: Vec<Arc<dyn ProbDataGivenThetaModel>>,
 }
 
-impl DynMixtureModelDistributionSampler {
+impl DynNcompMixtureModelProbData {
+    /// Constructor
+    ///
+    /// # Errors
+    /// * the len of passed `theta` array is 0
+    /// * any of the passed `theta` values are <=0
+    /// * the sum of `theta` array exceeds 1
+    /// * the len of `theta` does not equal the len of `components` - 1
+    /// * model `components` do not share identical dimensionality
     pub fn new(
         theta: Array1<f64>,
         components: Vec<Arc<dyn ProbDataGivenThetaModel>>,
@@ -58,7 +71,7 @@ impl DynMixtureModelDistributionSampler {
     }
 }
 
-impl LogLikelihoodModel for DynMixtureModelDistributionSampler {
+impl LogLikelihoodModel for DynNcompMixtureModelProbData {
     fn get_n_parameters(&self) -> usize {
         self.components[0].get_n_parameters()
     }
@@ -94,11 +107,11 @@ mod tests {
 
     #[test]
     fn test_initialisation() -> anyhow::Result<()> {
-        let _ = DynMixtureModelDistributionSampler::new(
+        let _ = DynNcompMixtureModelProbData::new(
             array![0.5],
             vec![
-                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)),
-                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)),
+                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)?),
+                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)?),
             ],
         )?;
 
@@ -107,11 +120,11 @@ mod tests {
 
     #[test]
     fn test_init_failure_theta_empty() -> anyhow::Result<()> {
-        let result = DynMixtureModelDistributionSampler::new(
+        let result = DynNcompMixtureModelProbData::new(
             array![],
             vec![
-                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)),
-                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)),
+                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)?),
+                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)?),
             ],
         );
         assert!(result.is_err());
@@ -121,11 +134,11 @@ mod tests {
 
     #[test]
     fn test_init_failure_theta_too_large() -> anyhow::Result<()> {
-        let result = DynMixtureModelDistributionSampler::new(
+        let result = DynNcompMixtureModelProbData::new(
             array![1.5],
             vec![
-                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)),
-                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)),
+                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)?),
+                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)?),
             ],
         );
         assert!(result.is_err());
@@ -137,12 +150,12 @@ mod tests {
     #[case(array![0.2])]
     #[case(array![0.2, 0.1, 0.1])]
     fn test_init_failure_theta_wrong_length(#[case] theta: Array1<f64>) -> anyhow::Result<()> {
-        let result = DynMixtureModelDistributionSampler::new(
+        let result = DynNcompMixtureModelProbData::new(
             theta,
             vec![
-                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)),
-                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)),
-                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)),
+                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)?),
+                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)?),
+                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)?),
             ],
         );
         assert!(result.is_err());
@@ -152,10 +165,10 @@ mod tests {
 
     #[test]
     fn theta_init_inconsistent_dimensionallity() -> anyhow::Result<()> {
-        let result = DynMixtureModelDistributionSampler::new(
+        let result = DynNcompMixtureModelProbData::new(
             array![1.0],
             vec![
-                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)),
+                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)?),
                 Arc::new(AnalyticNealsFunnelToyLogL::new()),
             ],
         );
@@ -166,11 +179,11 @@ mod tests {
 
     #[test]
     fn test_get_n_parameters() -> anyhow::Result<()> {
-        let model = DynMixtureModelDistributionSampler::new(
+        let model = DynNcompMixtureModelProbData::new(
             array![0.5],
             vec![
-                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)),
-                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)),
+                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)?),
+                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)?),
             ],
         )?;
 
@@ -181,11 +194,11 @@ mod tests {
 
     #[test]
     fn test_log_likelihood() -> anyhow::Result<()> {
-        let model = DynMixtureModelDistributionSampler::new(
+        let model = DynNcompMixtureModelProbData::new(
             array![0.5],
             vec![
-                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)),
-                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)),
+                Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)?),
+                Arc::new(AnalyticNormalToyLogL::new(1.0, 2.0)?),
             ],
         )?;
 

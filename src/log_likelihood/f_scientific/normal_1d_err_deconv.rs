@@ -14,12 +14,22 @@ use crate::{
     log_likelihood::{LogLikelihoodModel, ProbThetaGivenDataModel},
 };
 
+/// Normal distribution in one-dimension; error deconvolution
+///
+/// # Fields:
+/// * `mu`: the position of the data points being fit
+/// * `sigma_sqr`: the variance (standard deviation squared) of the data points being fit
 pub struct GaussianLl1dDataErrors {
     mu: Array1<f64>,
     sigma_sqr: Array1<f64>,
 }
 
 impl GaussianLl1dDataErrors {
+    /// Constructor method
+    ///
+    /// Takes data in a columnwise format:
+    /// data[:, 0], first column, corresponds to `mu`
+    /// data[:, 1], second column, corresponds to `sigma` and will be converted to `sigma_sqr` internally
     pub fn new(data: &Array2<f64>) -> Self {
         let mu = data.column(0).to_owned();
         let mut sigma_sqr = data.column(1).to_owned();
@@ -28,6 +38,11 @@ impl GaussianLl1dDataErrors {
         Self { mu, sigma_sqr }
     }
 
+    /// Constructor method
+    ///
+    /// Takes individual arrays:
+    /// * `mu`: array of the data values
+    /// * `sigma`: array of data standard deviation; the conversion to `sigma_sqr` is handled internally
     pub fn from_mu_sigma(mu: &Array1<f64>, sigma: &Array1<f64>) -> Self {
         let mu = mu.to_owned();
         let mut sigma_sqr = sigma.to_owned();

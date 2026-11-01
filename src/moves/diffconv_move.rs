@@ -13,10 +13,20 @@ use crate::{
     threading::Threading,
 };
 
+/// Differential convergence move.
+///
+/// Modification on standard 'differential move'. Instead of walker i sampling a based on two additional walkers, `d` = `theta_j` - `theta_k`, we determine direction based on current walker position.
+/// This has the beneficial property of enabling a move from a 'stuck' location to a region of high posterior probability.
+/// This move is thus ideal for convergence but should not be used for posterior sampling.
+///
+/// # Warning:
+/// This move should not be used for posterior sampling.
+/// This move is only designed to help in the convergence stage by limiting directions to be towards other walkers.
 #[derive(Debug, PartialEq)]
 pub struct DiffConvMove {}
 
 impl DiffConvMove {
+    /// Constructor
     pub fn new() -> Self {
         Self {}
     }

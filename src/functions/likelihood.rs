@@ -3,7 +3,8 @@
 //TODO: clean these function up
 pub mod normal_n_dimensional;
 
-pub const TWO_PI: f64 = 2.0 * std::f64::consts::PI;
+/// 2 pi
+const TWO_PI: f64 = 2.0 * std::f64::consts::PI;
 
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
 /// Function to compute the normalised normal distribution.
@@ -44,7 +45,7 @@ pub fn log_normalised_gaussian(x: f64, mu: f64, sigma: f64) -> f64 {
 }
 
 /// Modification of logarithm of normal distribution to accept variance directly.
-/// This can be more efficient in some heavy workflows to avoid the .powi(2) and .sqrt() calls.
+/// This can be more efficient in some heavy workflows to avoid the `.powi(2)` and `.sqrt()` calls.
 ///
 /// # Arguments
 /// * `x` - The value to be evaluated under the normal distribution.

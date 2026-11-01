@@ -42,7 +42,7 @@ use ndarray::{Array1, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
 /// The simplest way is to sample both values in physical space and set a hard prior of the type:
 /// '''
 /// if sigma <= 0 {
-///     return f64::NEG_INFINITY
+///     return `f64::NEG_INFINITY`
 /// }
 /// '''
 /// However, if sigma is very small, this prior can impede convergence.
@@ -161,8 +161,11 @@ pub trait LogLikelihoodModel: Send + Sync {
     /// If no transform is needed use the default implementation which handles book keeping of internal data structures.
     ///
     /// # Arguments
-    /// * physical: initial conditions provided with shape [N_walkers, N_parameters]
-    /// * internal: mutable array onto which the transformed parameters will be assigned
+    /// * `physical`: initial conditions provided with shape [`N_walkers`, `N_parameters`]
+    /// * `internal`: mutable array onto which the transformed parameters will be assigned
+    ///
+    /// # Errors
+    /// * failure of user-defined (overwriting) transform function
     fn columnar_transform_physical_to_internal(
         &self,
         physical: ArrayView2<f64>,
@@ -180,8 +183,11 @@ pub trait LogLikelihoodModel: Send + Sync {
     /// If no transform is needed use the default implementation which handles book keeping of internal data structures.
     ///
     /// # Arguments
-    /// * internal: internal walker state of shape [N_walkers, N_parameters]
-    /// * physical: mutable array onto which the transformed parameters will be assigned
+    /// * `internal`: internal walker state of shape [`N_walkers`, `N_parameters`]
+    /// * `physical`: mutable array onto which the transformed parameters will be assigned
+    ///
+    /// # Errors
+    /// * failure of user-defined (overwriting) transformation function
     fn columnar_transform_internal_to_physical(
         &self,
         internal: ArrayView2<f64>,
@@ -196,9 +202,12 @@ pub trait LogLikelihoodModel: Send + Sync {
     /// This function is used within the MCMC process to convert proposals back to physical space for log-likelihood function
     ///
     /// # Arguments
-    /// * log_jacobian: mutable reference which should be modified according to log-likelihood warp
-    /// * internal: array view of proposal parameters in internal phase space
-    /// * physical: mutable array reference for assignment of proposal parameters in physical phase space
+    /// * `log_jacobian`: mutable reference which should be modified according to log-likelihood warp
+    /// * `internal`: array view of proposal parameters in internal phase space
+    /// * `physical`: mutable array reference for assignment of proposal parameters in physical phase space
+    ///
+    /// # Errors
+    /// * failure of user-defined (overwriting) conversion function
     fn convert_internal_to_physical_tracking_ll_warp(
         &self,
         log_jacobian: &mut f64,
@@ -216,6 +225,9 @@ pub trait LogLikelihoodModel: Send + Sync {
     /// Constraints:
     /// - system will return an error if log-likelihood returns NaN or +INF
     /// - system will interpret -INF as a hard boundary in phase space
+    ///
+    /// # Errors
+    /// * failure of log-likelihood implementation
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64>;
 }
 
@@ -224,8 +236,18 @@ pub trait LogLikelihoodModel: Send + Sync {
 /// Such models store data which is to be fit and optimise a set of parameters modelling that data.
 ///
 /// # Functions
-/// * log_likelihood_pointwise: The base trait returns a single f64 over all data points. This function returns a pointwise log-likelihood enabling model usage in mixture models
+/// * `log_likelihood_pointwise`: The base trait returns a single f64 over all data points. This function returns a pointwise log-likelihood enabling model usage in mixture models
 pub trait ProbThetaGivenDataModel: LogLikelihoodModel {
+    /// Alternative function to compute the log-likelihood per data point as required by mixture models.
+    ///
+    /// # Arguments:
+    /// * parameters: the parameters of the model
+    ///
+    /// # Returns:
+    /// * Log-likelihood per data point
+    ///
+    /// # Errors
+    /// * failure of pointwise log-likelihood function
     fn log_likelihood_pointwise(&self, parameters: ArrayView1<f64>) -> anyhow::Result<Array1<f64>>;
 }
 
@@ -235,6 +257,6 @@ pub trait ProbThetaGivenDataModel: LogLikelihoodModel {
 /// the model stores parameter values and we infer samples from the distribution.
 ///
 /// Such a model is far less complex.
-/// A P(theta|x) model generates a log-likelihood for each x_i which needs to be handled n context of a mixture.
+/// A P(theta|x) model generates a log-likelihood for each `x_i` which needs to be handled n context of a mixture.
 /// This system simply returns a log-likelihood for that sample of distribution space.
 pub trait ProbDataGivenThetaModel: LogLikelihoodModel {}

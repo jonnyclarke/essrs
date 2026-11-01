@@ -3,12 +3,17 @@
 use anyhow::ensure;
 
 /// This is a method used for achieving ordered parameters, e.g. in gaussian mixture modelling
+///
+/// # Errors
 pub fn ordinal_sequencer(x0: f64, x1: &mut f64) -> anyhow::Result<()> {
     *x1 += x0;
     Ok(())
 }
 
 /// Inverse of ordinal sequencing
+///
+/// # Errors
+/// * returns error when x1 < x0
 pub fn ordinal_sequencer_inverse(x0: f64, x1_prime: &mut f64) -> anyhow::Result<()> {
     ensure!(
         (*x1_prime).gt(&x0),

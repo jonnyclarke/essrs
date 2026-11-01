@@ -1,10 +1,5 @@
 //! Hybrid move considering one secondary move for every (N-1) primary moves.
 
-pub enum WhichMove {
-    Primary,
-    Secondary,
-}
-
 use crate::{
     log_likelihood::LogLikelihoodModel,
     moves::{DynEnsembleMove, EnsembleMove},
@@ -16,6 +11,14 @@ fn choose_move(i: usize, one_in_n: usize) -> bool {
     i.is_multiple_of(one_in_n)
 }
 
+/// Hybrid move; 'one-in-n' selection criteria.
+///
+/// This move runs 1 `secondary` move per (n-1) `primary` moves on a rolling 'n' move basis.
+///
+/// # Fields:
+/// * `primary`: move that will be used the majority of the time
+/// * `secondary`: move that will be used once every 'n-1' moves
+/// * `one_in_n`: the number of moves within which to run 'n-1' `primary` moves and 1 `secondary` move
 pub struct HybridOneInNMove<P: EnsembleMove, S: EnsembleMove> {
     primary: P,
     secondary: S,
@@ -23,6 +26,12 @@ pub struct HybridOneInNMove<P: EnsembleMove, S: EnsembleMove> {
 }
 
 impl<P: EnsembleMove, S: EnsembleMove> HybridOneInNMove<P, S> {
+    /// Constructor
+    ///
+    /// # Arguments:
+    /// * `primary`: move to be used as primary
+    /// * `secondary`: move to be used as secondary
+    /// * `one_in_n`: number of moves to form a cycle
     pub fn new(primary: P, secondary: S, one_in_n: usize) -> Self {
         Self {
             primary,
@@ -49,6 +58,7 @@ impl<P: EnsembleMove, S: EnsembleMove> EnsembleMove for HybridOneInNMove<P, S> {
     }
 }
 
+/// Dynamic implementation of the Hybrid 'one-in-n' move
 pub struct DynHybridOneInNMove {
     primary: Box<dyn DynEnsembleMove>,
     secondary: Box<dyn DynEnsembleMove>,
@@ -56,6 +66,7 @@ pub struct DynHybridOneInNMove {
 }
 
 impl DynHybridOneInNMove {
+    /// Constructor
     pub fn new(
         primary: Box<dyn DynEnsembleMove>,
         secondary: Box<dyn DynEnsembleMove>,

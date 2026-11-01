@@ -1,3 +1,7 @@
+//! Benchmark
+//! Run the analytical toy model, normal_1d, for a range of parallelism.
+#![allow(missing_docs)]
+
 use anyhow;
 use criterion::{Criterion, criterion_group, criterion_main};
 use essrs::{
@@ -17,9 +21,9 @@ fn bench_analytic_normal_parallel(n_threads: Option<usize>) -> anyhow::Result<()
     const N_BURN_IN: usize = 100;
 
     let move_handler = DifferentialMove::new();
-    let model = AnalyticNormalToyLogL::new(TRUE_MU, TRUE_SIGMA);
+    let model = AnalyticNormalToyLogL::new(TRUE_MU, TRUE_SIGMA)?;
 
-    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, n_threads, None);
+    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, n_threads, None)?;
 
     let start = random_normal_points(N_WALKERS, 1.0, 2.0)?;
     let start = start.insert_axis(Axis(1));

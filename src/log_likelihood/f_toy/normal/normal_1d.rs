@@ -1,4 +1,4 @@
-use anyhow;
+use anyhow::ensure;
 use ndarray::ArrayView1;
 
 use crate::{
@@ -14,8 +14,19 @@ pub struct AnalyticNormalToyLogL {
 }
 
 impl AnalyticNormalToyLogL {
-    pub fn new(mu: f64, sigma: f64) -> Self {
-        Self { mu, sigma }
+    /// Constructor
+    ///
+    /// # Arguments
+    /// TODO
+    ///
+    /// # Errors
+    /// * passed 'sigma' value is <=0
+    pub fn new(mu: f64, sigma: f64) -> anyhow::Result<Self> {
+        ensure!(
+            sigma.gt(&0.0_f64),
+            "Sigma passed to toy normal distribution is invalid: {sigma}"
+        );
+        Ok(Self { mu, sigma })
     }
 }
 
@@ -44,7 +55,7 @@ mod tests {
 
     #[test]
     fn test_initialisation() -> anyhow::Result<()> {
-        let ll_normal = AnalyticNormalToyLogL::new(1.0, 3.0);
+        let ll_normal = AnalyticNormalToyLogL::new(1.0, 3.0)?;
         let parameters = array![1.0];
         let _ = ll_normal.log_likelihood(parameters.view());
 

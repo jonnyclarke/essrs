@@ -19,7 +19,7 @@ fn test_normal_distribution_with_errors() -> anyhow::Result<()> {
     let move_handler = DifferentialMove::new();
     let model = GaussianLl1dDataErrors::new(&data);
 
-    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, None, None);
+    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, None, None)?;
 
     let start = array![
         [0.102, 0.87],

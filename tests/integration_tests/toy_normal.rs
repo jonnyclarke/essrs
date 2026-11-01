@@ -20,9 +20,9 @@ fn test_analytical_normal() -> anyhow::Result<()> {
     const N_WALKERS: usize = 10;
 
     let move_handler = DifferentialMove::new();
-    let model = AnalyticNormalToyLogL::new(TARGET_MU, TARGET_SIGMA);
+    let model = AnalyticNormalToyLogL::new(TARGET_MU, TARGET_SIGMA)?;
 
-    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, None, None);
+    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, None, None)?;
 
     let start = array![
         [-0.5],

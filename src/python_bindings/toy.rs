@@ -8,7 +8,7 @@ use pyo3::prelude::*;
 
 use crate::{
     log_likelihood::f_toy::{
-        AnalyticNealsFunnelToyLogL, AnalyticRosenbrockToyLogL, DynMixtureModelDistributionSampler,
+        AnalyticNealsFunnelToyLogL, AnalyticRosenbrockToyLogL, DynNcompMixtureModelProbData,
         normal::{
             AnalyticNormalToyLogL, BuildAnalyticNormalMixtureOneD, BuildAnalyticNormalNDimensional,
         },
@@ -36,7 +36,7 @@ pub fn dyn_fdata_ncomp_mm<'py>(
 
     Ok(PyLogLikelihoodModel {
         model: Arc::new(
-            DynMixtureModelDistributionSampler::new(theta, components)
+            DynNcompMixtureModelProbData::new(theta, components)
                 .context("failed to build dynamic mixture model")?,
         ),
         p_data_g_theta: None,
@@ -55,13 +55,16 @@ pub fn neals_funnel() -> PyLogLikelihoodModel {
 }
 
 #[pyfunction]
-pub fn normal_1d(mu: f64, sigma: f64) -> PyLogLikelihoodModel {
-    let model = Arc::new(AnalyticNormalToyLogL::new(mu, sigma));
-    PyLogLikelihoodModel {
+pub fn normal_1d(mu: f64, sigma: f64) -> PyResult<PyLogLikelihoodModel> {
+    let model = Arc::new(
+        AnalyticNormalToyLogL::new(mu, sigma)
+            .context("construction of 'normal_1d' python binding has failed")?,
+    );
+    Ok(PyLogLikelihoodModel {
         model: model.clone(),
         p_data_g_theta: Some(model),
         p_theta_g_data: None,
-    }
+    })
 }
 
 #[pyfunction]

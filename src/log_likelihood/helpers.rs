@@ -3,6 +3,19 @@ use ndarray::{Array1, Array2};
 use rand::rng;
 use rand_distr::{Distribution, LogNormal, Normal};
 
+/// Generate n random normally distributed points.
+///
+/// # Arguments
+/// * `n`: the number of points to generate
+/// * `mean`: centroid of the distribution to be sampled
+/// * `std_dev`: standard deviation of the distribution to be sampled
+///
+/// # Returns
+/// * array of normally distributed points
+///
+/// # Errors
+/// * passed standard deviation is <=0
+/// * sampling from normal distribution
 pub fn random_normal_points(n: usize, mean: f64, std_dev: f64) -> anyhow::Result<Array1<f64>> {
     ensure!(
         std_dev.gt(&0.0_f64),
@@ -18,6 +31,12 @@ pub fn random_normal_points(n: usize, mean: f64, std_dev: f64) -> anyhow::Result
     Ok(Array1::from(v))
 }
 
+/// Generate random points for benchmarking
+/// TODO: re-write
+///
+/// # Errors
+/// * sampling from normal/lognormal distribution
+/// * conversion from a Vec to an Array2 type
 pub fn helper_generate_random_gaussian_points(n: usize) -> anyhow::Result<Array2<f64>> {
     let mut data = Vec::<f64>::with_capacity(n * 2);
 

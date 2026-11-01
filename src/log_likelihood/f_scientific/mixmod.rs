@@ -14,6 +14,12 @@ use crate::{
     log_likelihood::{LogLikelihoodModel, ProbThetaGivenDataModel},
 };
 
+/// Mixture model; dynamic number of components (As opposed to a 'primary/secondary' style hierarchical model)
+///
+/// # Fields:
+/// * `components`: Vector of dynamic log-likelihood models of the P(theta|data) type
+/// * `n_comp`: the number of `components` in the mixture
+/// * `n_theta`: the number of theta values in mixture (redundant since `n_theta` = `n_comp - 1`)
 pub struct DynNcompMixtureModel {
     components: Vec<Arc<dyn ProbThetaGivenDataModel>>,
     n_comp: usize,
@@ -21,6 +27,13 @@ pub struct DynNcompMixtureModel {
 }
 
 impl DynNcompMixtureModel {
+    /// Constructor
+    ///
+    /// Arguments
+    /// * `components`: Vector of models to be used in the mixture model
+    ///
+    /// # Errors
+    /// * returns an error if the models are not of the same type
     pub fn new(components: Vec<Arc<dyn ProbThetaGivenDataModel>>) -> anyhow::Result<Self> {
         let t = components[0].as_ref().type_id();
 

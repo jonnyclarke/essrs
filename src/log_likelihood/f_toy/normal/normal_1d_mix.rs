@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, ensure};
 use ndarray::{Array1, ArrayView1};
 
 use crate::{
@@ -6,6 +6,12 @@ use crate::{
     log_likelihood::LogLikelihoodModel,
 };
 
+/// Normal 1D sampler mixture model. P(data|theta).
+///
+/// # Fields:
+/// * n: the number of normal distributions in the mixture model
+///
+/// ...
 pub struct AnalyticNormalMixtureOneD {
     n: usize,
 
@@ -30,6 +36,10 @@ pub struct BuildAnalyticNormalMixtureOneD<T, M, S> {
 }
 
 impl BuildAnalyticNormalMixtureOneD<Missing, Missing, Missing> {
+    /// Constructor
+    ///
+    /// # Arguments
+    /// * n: the number of one-dimensional gaussian distributions contained in the mixture.
     pub fn new(n: usize) -> Self {
         Self {
             n,
@@ -44,6 +54,15 @@ impl BuildAnalyticNormalMixtureOneD<Missing, Missing, Missing> {
 }
 
 impl<T, M, S> BuildAnalyticNormalMixtureOneD<T, M, S> {
+    /// Setter for 'theta' value
+    ///
+    /// # Arguments
+    /// * `theta`: Array of weights for each of the individual components
+    ///
+    /// # Errors
+    /// * returns an error if the length of `theta` is not equal to (n - 1); the weight of the final component is equal to (1 - `theta.sum()`)
+    /// * returns an error if any of the `theta` values are <= 0
+    /// * returns an error if the sum of the `theta` array is greater than 1; represents an ill defined mixture integral
     pub fn theta(mut self, theta: Array1<f64>) -> BuildAnalyticNormalMixtureOneD<Set, M, S> {
         if theta.len() != self.n - 1 {
             self.errors.push(anyhow!(
@@ -51,6 +70,13 @@ impl<T, M, S> BuildAnalyticNormalMixtureOneD<T, M, S> {
                 theta.len(),
                 self.n
             ));
+        }
+
+        if theta.iter().any(|x| x.le(&0.0_f64)) {
+            self.errors.push(anyhow!(
+                "invalid theta value, theta cannot be negative:\n\t{:#?}",
+                theta
+            ))
         }
 
         if theta.sum().ge(&1.0_f64) {
@@ -68,6 +94,13 @@ impl<T, M, S> BuildAnalyticNormalMixtureOneD<T, M, S> {
         }
     }
 
+    /// Setter for 'mu' field
+    ///
+    /// # Arguments:
+    /// * mu: Array containing normal distribution centroid values
+    ///
+    /// # Errors:
+    /// * Returns an error if the length of 'mu' deos not equal the specified number of components.
     pub fn mu(mut self, mu: Array1<f64>) -> BuildAnalyticNormalMixtureOneD<M, Set, S> {
         if mu.len() != self.n {
             self.errors.push(anyhow!(
@@ -87,6 +120,14 @@ impl<T, M, S> BuildAnalyticNormalMixtureOneD<T, M, S> {
         }
     }
 
+    /// Setter for 'sigma' field
+    ///
+    /// # Arguments:
+    /// * sigma: Array containing normal distribution standard deviation values
+    ///
+    /// # Errors:
+    /// * returns an error if the number of sigma values does not match the specified number of components
+    /// * returns an error if any of the given sigma values are <= 0
     pub fn sigma(mut self, sigma: Array1<f64>) -> BuildAnalyticNormalMixtureOneD<M, M, Set> {
         if sigma.len() != self.n {
             self.errors.push(anyhow!(
@@ -113,17 +154,25 @@ impl<T, M, S> BuildAnalyticNormalMixtureOneD<T, M, S> {
 }
 
 impl BuildAnalyticNormalMixtureOneD<Set, Set, Set> {
+    /// Builder converting builder struct to model
+    ///
+    /// # Errors
+    /// * returns an error if any errors during the build phase have accumulated
+    ///
+    /// # Panics
+    /// * `theta` is still `None`
+    /// * `mu` is still `None`
+    /// * `sigma_sqr` is still '`None`
     pub fn build(self) -> anyhow::Result<AnalyticNormalMixtureOneD> {
-        if !self.errors.is_empty() {
-            bail!(
-                "Builder validation failed:\n{}",
-                self.errors
-                    .iter()
-                    .map(|e| format!("- {e}"))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            );
-        }
+        ensure!(
+            self.errors.is_empty(),
+            "Builder validations have failed:\n{}",
+            self.errors
+                .iter()
+                .map(|e| format!("- {e}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
 
         Ok(AnalyticNormalMixtureOneD {
             n: self.n,
@@ -242,7 +291,7 @@ mod tests {
 
     // #[test]
     // fn test_init_failure_theta_too_large() -> anyhow::Result<()> {
-    //     let result = DynMixtureModelDistributionSampler::new(
+    //     let result = DynNcompMixtureModelProbData::new(
     //         array![1.5],
     //         vec![
     //             Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)),
@@ -258,7 +307,7 @@ mod tests {
     // #[case(array![0.2])]
     // #[case(array![0.2, 0.1, 0.1])]
     // fn test_init_failure_theta_wrong_length(#[case] theta: Array1<f64>) -> anyhow::Result<()> {
-    //     let result = DynMixtureModelDistributionSampler::new(
+    //     let result = DynNcompMixtureModelProbData::new(
     //         theta,
     //         vec![
     //             Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)),

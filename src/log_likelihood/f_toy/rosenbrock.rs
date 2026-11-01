@@ -5,12 +5,22 @@ use crate::log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel};
 
 const N_PARAMETERS_ROSENBROCK: usize = 2;
 
+/// Rosenbrock toy model
+///
+/// # Fields:
+/// * a: offset term
+/// * b: shape term
 pub struct AnalyticRosenbrockToyLogL {
     a: f64,
     b: f64,
 }
 
 impl AnalyticRosenbrockToyLogL {
+    /// Constructor
+    ///
+    /// # Arguments:
+    /// * a
+    /// * b
     pub fn new(a: f64, b: f64) -> Self {
         Self { a, b }
     }

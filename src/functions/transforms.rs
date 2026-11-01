@@ -7,9 +7,21 @@ pub mod ordseq;
 pub mod softplus;
 pub mod tanh;
 
-use anyhow::Context;
+use anyhow::{Context, ensure};
 use ndarray::{Array1, ArrayView1, ArrayViewMut2, s};
 
+/// Compute a transform over elements in array
+///
+/// # Arguments:
+/// * f: function to be applied
+/// * xs: Array to be iterated over
+/// * ll: Mutable float which is permuted within function
+///
+/// # Return
+/// * Array containing transformed values
+///
+/// # Errors
+/// * propagate supplied `f` error
 pub fn apply_transform_array1<F>(
     f: F,
     xs: ArrayView1<f64>,
@@ -27,6 +39,16 @@ where
     Ok(out)
 }
 
+/// Apply a transform into a mutable Array2 column
+///
+/// # Arguments
+/// * f: function which will be applied
+/// * array: array within which a mutable column will be updated
+/// * col: index of the column to be changed
+///
+/// # Errors
+/// * column index outside of array shape
+/// * propagate column wise transform function failure
 pub fn apply_transform_column<F>(
     f: F,
     array: &mut ArrayViewMut2<f64>,
@@ -35,6 +57,11 @@ pub fn apply_transform_column<F>(
 where
     F: Fn(f64) -> anyhow::Result<f64>,
 {
+    ensure!(
+        col.ge(&0_usize) && col.lt(&(array.ncols())),
+        "column index, {col}, outside bounds of array shape, {:#?}",
+        array.shape()
+    );
     for x in array.column_mut(col).iter_mut() {
         *x = f(*x).context("columnwise transform failed")?
     }
@@ -44,6 +71,10 @@ where
 
 /// Function to apply an inplace column transform reliant on two columns.
 /// An example of usage is to provide ordered softplus transforms.
+///
+/// # Errors
+/// * column indices are beyond the column range of the given array
+/// * propagates error in event the user defined function fails
 pub fn apply_inplace_multi_column_transform<F>(
     f: F,
     array: &mut ArrayViewMut2<f64>,
@@ -53,6 +84,16 @@ pub fn apply_inplace_multi_column_transform<F>(
 where
     F: Fn(f64, &mut f64) -> anyhow::Result<()>,
 {
+    ensure!(
+        col1.ge(&0_usize) && col1.lt(&(array.ncols())),
+        "column index, {col1}, outside bounds of array shape, {:#?}",
+        array.shape()
+    );
+    ensure!(
+        col2.ge(&0_usize) && col2.lt(&(array.ncols())),
+        "column index, {col2}, outside bounds of array shape, {:#?}",
+        array.shape()
+    );
     let (column1, mut column2) = array.multi_slice_mut((s![.., col1], s![.., col2]));
 
     for (x1, x2) in column1.iter().zip(column2.iter_mut()) {

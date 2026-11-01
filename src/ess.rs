@@ -1,6 +1,6 @@
 //! Primary API of the Ensemble Slice Sampler MCMC process.
 
-use anyhow::Context;
+use anyhow::{Context, ensure};
 use ndarray::{Array2, Array3, ArrayView2};
 
 use crate::{
@@ -15,8 +15,8 @@ use crate::{
 ///
 /// This struct manages all the internals of the MCMC fit.
 /// Type is generic over:
-/// * implementor of 'MoveHandler' trait: controls how the MCMC makes proposals
-/// * implementor of 'LogLikelihoodModel' trait: provides log-likelihood computation
+/// * implementor of `MoveHandler` trait: controls how the MCMC makes proposals
+/// * implementor of `LogLikelihoodModel` trait: provides log-likelihood computation
 pub struct EnsembleSliceSampler {
     /// the maximum number of steps for which to run the MCMC
     n_samples: usize,
@@ -39,25 +39,32 @@ pub struct EnsembleSliceSampler {
 }
 
 impl EnsembleSliceSampler {
-    /// Generate a new EnsembleSliceSampler object
+    /// Generate a new `EnsembleSliceSampler` object
     ///
     /// # Arguments
-    /// * n_samples: the number of steps the sampler will take
-    /// * n_walkers: the number of walkers used for parallel sampling
-    /// * n_parameters: the number of parameters in the likelihood model
+    /// * `n_samples`: the number of steps the sampler will take
+    /// * `n_walkers`: the number of walkers used for parallel sampling
+    /// * `n_parameters`: the number of parameters in the likelihood model
+    ///
+    /// # Errors
+    /// * ensures number of walkers exceeds required heuristic
+    /// * failure to build thread management object
     pub fn new(
         n_samples: usize,
         n_walkers: usize,
         n_parameters: usize,
         n_threads: Option<usize>,
         n_thinning_per_sample: Option<usize>,
-    ) -> Self {
-        let required_walkers = (n_parameters * 2).max(3);
-        assert!(n_walkers >= required_walkers);
+    ) -> anyhow::Result<Self> {
+        ensure!(
+            n_walkers.ge(&((n_parameters * 2).max(3))),
+            "The number of walkers {n_walkers} must exceed twice the dimensionality of the likelihood function {n_parameters}"
+        );
 
-        let threads = Threading::new(n_threads, n_parameters).unwrap();
+        let threads = Threading::new(n_threads, n_parameters)
+            .context("Failed to build thread management object")?;
 
-        Self {
+        Ok(Self {
             n_samples,
             n_walkers,
             n_parameters,
@@ -66,7 +73,7 @@ impl EnsembleSliceSampler {
             chains: StaticBuffer::new(n_samples, n_walkers, n_parameters),
             state: WalkerState::new(n_walkers, n_parameters),
             threads,
-        }
+        })
     }
 
     /// Calls state-buffer swap which flips current and next memory locations
@@ -82,23 +89,27 @@ impl EnsembleSliceSampler {
 
     /// Extract full state history
     ///
-    /// This wraps the chain buffer object's 'extract_state_history' function
+    /// This wraps the chain buffer object's `extract_state_history` function
     pub fn extract_state_history(&self) -> Array3<f64> {
         self.chains.extract_state_history()
     }
 
     /// Extract full log likelihood history
     ///
-    /// This wraps the chain buffer object's 'extract_state_history' function
+    /// This wraps the chain buffer object's `extract_log_likelihood_history` function
     pub fn extract_log_likelihood_history(&self) -> Array2<f64> {
         self.chains.extract_log_likeihood_history()
     }
 
     /// Initialise from physical initial conditions
     ///
-    /// # Arguments:
+    /// # Arguments
     /// * model: log-likelihood model
-    /// * physical: Array2 object [n_walker, n_parameter] containing initial conditions in physical parameter space
+    /// * physical: Array2 object [`n_walker`, `n_parameter`] containing initial conditions in physical parameter space
+    ///
+    /// # Errors
+    /// * failure of conversion from physical to internal parameter representations
+    /// * failure of user-defined log-likelihood function
     pub fn initialise<L>(&mut self, model: &L, physical: ArrayView2<f64>) -> anyhow::Result<()>
     where
         L: LogLikelihoodModel + ?Sized,
@@ -136,7 +147,10 @@ impl EnsembleSliceSampler {
     ///
     /// # Arguments:
     /// * model: log-likelihood model
-    /// * physical: Array2 object [n_walker, n_parameter] containing initial conditions in physical parameter space
+    /// * physical: Array2 object [`n_walker`, `n_parameter`] containing initial conditions in physical parameter space
+    ///
+    /// # Errors
+    /// * propagates static dispatch `initialise` error
     pub fn initialise_dyn(
         &mut self,
         model: &dyn LogLikelihoodModel,
@@ -147,6 +161,9 @@ impl EnsembleSliceSampler {
     }
 
     /// Run burn in phase to converge walkers to posterior probability region
+    ///
+    /// # Errors
+    /// * propagates `jump` error
     pub fn run_burn_in<L, M>(
         &mut self,
         model: &L,
@@ -158,7 +175,9 @@ impl EnsembleSliceSampler {
         M: EnsembleMove + ?Sized,
     {
         for iteration in 1..=n_burn_in {
-            burn_move_handler.jump(iteration, model, &mut self.state, &self.threads)?;
+            burn_move_handler
+                .jump(iteration, model, &mut self.state, &self.threads)
+                .context("static-dispatch burn-in has failed")?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
         }
 
@@ -166,6 +185,9 @@ impl EnsembleSliceSampler {
     }
 
     /// Run burn in phase -- dynamic dispatch mode
+    ///
+    /// # Errors
+    /// * propagates `jump_dyn` error
     pub fn run_burn_in_dyn(
         &mut self,
         model: &dyn LogLikelihoodModel,
@@ -173,7 +195,9 @@ impl EnsembleSliceSampler {
         n_burn_in: usize,
     ) -> anyhow::Result<()> {
         for iteration in 1..=n_burn_in {
-            burn_move_handler.jump_dyn(iteration, model, &mut self.state, &self.threads)?;
+            burn_move_handler
+                .jump_dyn(iteration, model, &mut self.state, &self.threads)
+                .context("dynamic-dispatch burn-in has failed")?;
             self.accept_proposed_state(); // we accept new state before storing to avoid storing the initial conditions state...
         }
 
@@ -182,8 +206,11 @@ impl EnsembleSliceSampler {
 
     /// Move state into chain storage
     ///
-    /// # Arguments:
+    /// # Arguments
     /// * model: this is required to apply the columnar internal-to-physical transform
+    ///
+    /// # Errors
+    /// * propagates parameter columnwise transform, internal -> physical, transform error
     fn state_to_chains<L>(&mut self, model: &L) -> anyhow::Result<()>
     where
         L: LogLikelihoodModel + ?Sized,
@@ -193,10 +220,12 @@ impl EnsembleSliceSampler {
             .assign(&self.state.get_ll_vector_view());
 
         let internal = self.state.get_state_matrix_view();
-        model.wrapped_columnar_transform_internal_to_physical(
-            internal,
-            self.chains.get_next_state_matrix(),
-        )?;
+        model
+            .wrapped_columnar_transform_internal_to_physical(
+                internal,
+                self.chains.get_next_state_matrix(),
+            )
+            .context("state storage into chains has failed")?;
 
         self.chains.increment_n_stored();
         Ok(())
@@ -207,8 +236,12 @@ impl EnsembleSliceSampler {
     /// Uses static dispatch for optimised applications
     ///
     /// # Arguments
-    /// * model: the log-likelihood model to search over
-    /// * move_handler: the move handler used for progressing each walker
+    /// * `model`: the log-likelihood model to search over
+    /// * `move_handler`: the move handler used for progressing each walker
+    ///
+    /// # Errors
+    /// * propagates `jump` errors
+    /// * propages `state_to_chains` errors
     pub fn run_sampler<L: LogLikelihoodModel, M: EnsembleMove>(
         &mut self,
         model: &L,
@@ -232,8 +265,12 @@ impl EnsembleSliceSampler {
     /// e.g. python bindings
     ///
     /// # Arguments
-    /// * model: the log-likelihood model to search over
-    /// * move_handler: the move handler used for progressing each walker
+    /// * `model`: the log-likelihood model to search over
+    /// * `move_handler`: the move handler used for progressing each walker
+    ///
+    /// # Errors
+    /// * propagates `jump_dyn` errors
+    /// * propagates `state_to_chains` errors
     pub fn run_sampler_dyn(
         &mut self,
         model: &dyn LogLikelihoodModel,
@@ -269,7 +306,7 @@ mod tests_ess {
         let data = array![[0.0_f64, 0.0_f64]];
         let model = GaussianLl1dDataErrors::new(&data);
 
-        let mut ess = EnsembleSliceSampler::new(2, 4, 2, None, None);
+        let mut ess = EnsembleSliceSampler::new(2, 4, 2, None, None)?;
 
         let physical = array![
             [0.0_f64, 1.0_f64],
@@ -319,7 +356,7 @@ mod tests_ess {
         let data = array![[0.0_f64, 0.0_f64]];
         let model = GaussianLl1dDataErrors::new(&data);
 
-        let mut ess = EnsembleSliceSampler::new(2, 4, 2, None, None);
+        let mut ess = EnsembleSliceSampler::new(2, 4, 2, None, None)?;
 
         let physical = array![
             [0.0_f64, 1.0_f64],
@@ -366,7 +403,7 @@ mod tests_ess {
 
     #[test]
     fn test_swap_wrapper() -> anyhow::Result<()> {
-        let mut ess = EnsembleSliceSampler::new(2, 4, 2, None, None);
+        let mut ess = EnsembleSliceSampler::new(2, 4, 2, None, None)?;
 
         ess.accept_proposed_state();
 

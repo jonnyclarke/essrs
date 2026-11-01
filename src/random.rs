@@ -5,7 +5,7 @@ use rand::{Rng, RngCore};
 /// This is used to sample a random index that does NOT equal the index of the current walker.
 /// Given we are running `N_WALKERS` as the ensemble.
 /// Differential move requires two further walkers to define the direction vector.
-/// We sample the first by sampling integers in the range [0, N_WALKERS - 1) and, if the selected index equals our walker's index (given by `not_this`) we add 1 to avoid re-sampling that value.
+/// We sample the first by sampling integers in the range [0, `N_WALKERS` - 1) and, if the selected index equals our walker's index (given by `not_this`) we add 1 to avoid re-sampling that value.
 pub(crate) fn get_rn_not<R: RngCore>(rng: &mut R, max_index: usize, not_this: usize) -> usize {
     let mut random_number: usize = rng.random_range(0..max_index - 1);
 
