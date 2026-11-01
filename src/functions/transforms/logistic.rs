@@ -1,6 +1,6 @@
 //! Functions for applying logistic transform
 
-use crate::functions::transforms::TransformError;
+use anyhow::ensure;
 
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
 /// Function to apply logistic transform.
@@ -10,7 +10,7 @@ use crate::functions::transforms::TransformError;
 /// $$
 /// y = \frac{1}{1 + e^{-x}}
 /// $$
-pub fn logistic(x: f64) -> Result<f64, TransformError> {
+pub fn logistic(x: f64) -> anyhow::Result<f64> {
     let y = 1.0 / (1.0 + (-x).exp());
     Ok(y)
 }
@@ -21,7 +21,7 @@ pub fn logistic(x: f64) -> Result<f64, TransformError> {
 /// $$
 /// \frac{dy}{dx} = \frac{e^{-x}}{\left( 1 + e^{-x} \right)^2}
 /// $$
-pub fn logistic_log_jacobian(x: f64) -> Result<(f64, f64), TransformError> {
+pub fn logistic_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
     let y = logistic(x)?;
 
     let ll = y.ln() + (1.0 - y).ln();
@@ -37,7 +37,7 @@ pub fn logistic_log_jacobian(x: f64) -> Result<(f64, f64), TransformError> {
 /// $$
 /// \frac{dy}{dx} = \frac{e^{-x}}{\left( 1 + e^{-x} \right)^2}
 /// $$
-pub fn logistic_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> Result<(), TransformError> {
+pub fn logistic_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Result<()> {
     let (y, lj) = logistic_log_jacobian(*x)?;
 
     *ll += lj;
@@ -52,7 +52,11 @@ pub fn logistic_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> Result<(), Tr
 /// $$
 /// x = \ln{\left[ \frac{y}{1 - y} \right]}
 /// $$
-pub fn logistic_inverse(y: f64) -> Result<f64, TransformError> {
+pub fn logistic_inverse(y: f64) -> anyhow::Result<f64> {
+    ensure!(
+        y.gt(&0.0_f64) && y.lt(&1.0_f64),
+        "invalid value, {y}, passed to 'logistic_inverse', requires 0 < y < 1 "
+    );
     let x = (y / (1.0 - y)).ln();
     Ok(x)
 }

@@ -7,64 +7,21 @@ pub mod ordseq;
 pub mod softplus;
 pub mod tanh;
 
+use anyhow::Context;
 use ndarray::{Array1, ArrayView1, ArrayViewMut2, s};
-use thiserror::Error;
-
-use crate::functions::numerical::NumericalError;
-
-///.
-#[derive(Debug, Error)]
-pub enum TransformError {
-    ///.
-    #[error("invalid value passed to softplus_inverse: {value} <= 0")]
-    InvalidSoftplusInput {
-        ///.
-        value: f64,
-    },
-
-    ///.
-    #[error("invalid value passed to tanh_inverse: -1 !<= {value} !<= 1")]
-    InvalidAtanhInput {
-        ///.
-        value: f64,
-    },
-    ///.
-    #[error("'{computation}' computation failed: {source}")]
-    Transform {
-        ///.
-        computation: &'static str,
-        ///.
-        #[source]
-        source: NumericalError,
-    },
-}
-
-#[derive(Debug, Error)]
-pub enum TransformHelperError {
-    #[error("failure applying '{computation}' transform: {source}")]
-    Transform {
-        computation: &'static str,
-
-        #[source]
-        source: TransformError,
-    },
-}
 
 pub fn apply_transform_array1<F>(
     f: F,
     xs: ArrayView1<f64>,
     ll: &mut f64,
-) -> Result<Array1<f64>, TransformHelperError>
+) -> anyhow::Result<Array1<f64>>
 where
-    F: Fn(f64, &mut f64) -> Result<f64, TransformError>,
+    F: Fn(f64, &mut f64) -> anyhow::Result<f64>,
 {
     let mut out = Array1::<f64>::zeros(xs.len());
 
     for (o, &x) in out.iter_mut().zip(xs.iter()) {
-        *o = f(x, ll).map_err(|source| TransformHelperError::Transform {
-            computation: "array1",
-            source,
-        })?;
+        *o = f(x, ll).context("elementwise function application failed")?
     }
 
     Ok(out)
@@ -74,15 +31,12 @@ pub fn apply_transform_column<F>(
     f: F,
     array: &mut ArrayViewMut2<f64>,
     col: usize,
-) -> Result<(), TransformHelperError>
+) -> anyhow::Result<()>
 where
-    F: Fn(f64) -> Result<f64, TransformError>,
+    F: Fn(f64) -> anyhow::Result<f64>,
 {
     for x in array.column_mut(col).iter_mut() {
-        *x = f(*x).map_err(|source| TransformHelperError::Transform {
-            computation: "column",
-            source,
-        })?;
+        *x = f(*x).context("columnwise transform failed")?
     }
 
     Ok(())
@@ -95,17 +49,14 @@ pub fn apply_inplace_multi_column_transform<F>(
     array: &mut ArrayViewMut2<f64>,
     col1: usize,
     col2: usize,
-) -> Result<(), TransformHelperError>
+) -> anyhow::Result<()>
 where
-    F: Fn(f64, &mut f64) -> Result<(), TransformError>,
+    F: Fn(f64, &mut f64) -> anyhow::Result<()>,
 {
     let (column1, mut column2) = array.multi_slice_mut((s![.., col1], s![.., col2]));
 
     for (x1, x2) in column1.iter().zip(column2.iter_mut()) {
-        f(*x1, x2).map_err(|source| TransformHelperError::Transform {
-            computation: "columns",
-            source,
-        })?;
+        f(*x1, x2).context("columnwise [a, mut b] has failed")?
     }
 
     Ok(())

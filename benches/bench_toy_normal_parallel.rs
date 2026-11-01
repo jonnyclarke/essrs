@@ -21,7 +21,7 @@ fn bench_analytic_normal_parallel(n_threads: Option<usize>) -> anyhow::Result<()
 
     let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, n_threads, None);
 
-    let start = random_normal_points(N_WALKERS, 1.0, 2.0);
+    let start = random_normal_points(N_WALKERS, 1.0, 2.0)?;
     let start = start.insert_axis(Axis(1));
 
     ess.initialise(&model, start.view()).unwrap();
