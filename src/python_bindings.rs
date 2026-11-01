@@ -249,7 +249,7 @@ fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     toy.add_function(wrap_pyfunction!(neals_funnel, &toy)?)?;
     toy.add_function(wrap_pyfunction!(normal_1d, &toy)?)?;
     toy.add_function(wrap_pyfunction!(normal_nd, &toy)?)?;
-    toy.add_function(wrap_pyfunction!(normal_1d_mix, &toy)?)?; // TODO: replace this with generic optimised implementation
+    toy.add_function(wrap_pyfunction!(normal_1d_mix, &toy)?)?;
     toy.add_function(wrap_pyfunction!(rosenbrock, &toy)?)?;
 
     toy.add_function(wrap_pyfunction!(dyn_fdata_ncomp_mm, &toy)?)?;

@@ -1,9 +1,8 @@
 //! Functions for applying softplus transform
 
-use crate::functions::{
-    numerical::{log_diff_exp, log_sum_exp},
-    transforms::TransformError,
-};
+use anyhow::Context;
+
+use crate::functions::numerical::{log_diff_exp, log_sum_exp};
 
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
 /// Apply the `softplus` transformation which converts any value -inf < x < +inf to 0 < y.
@@ -29,24 +28,21 @@ use crate::functions::{
 ///
 /// # Returns
 /// * `y` - the parameter in the constrained space `0 <`
-pub fn softplus(x: f64) -> Result<f64, TransformError> {
-    let y = log_sum_exp(0.0, x).map_err(|source| TransformError::Transform {
-        computation: "softplus",
-        source,
-    })?;
+pub fn softplus(x: f64) -> anyhow::Result<f64> {
+    let y = log_sum_exp(0.0, x).context(format!("softplus failed with argument x={x}"))?;
 
     Ok(y)
 }
 
 /// Compute softplus with log-jacobian transform
-pub fn softplus_log_jacobian(x: f64) -> Result<(f64, f64), TransformError> {
+pub fn softplus_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
     let y = softplus(x)?;
 
     Ok((y, x - y))
 }
 
 /// Compute softplus transform in place and modify mutable log_jacobian argument
-pub fn softplus_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> Result<(), TransformError> {
+pub fn softplus_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Result<()> {
     let (s, lj) = softplus_log_jacobian(*x)?;
 
     *ll += lj;
@@ -68,15 +64,8 @@ pub fn softplus_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> Result<(), Tr
 ///
 /// # Returns
 /// * `x` - the corresponding value in unconstrained space
-pub fn softplus_inverse(y: f64) -> Result<f64, TransformError> {
-    if y <= 0.0 {
-        return Err(TransformError::InvalidSoftplusInput { value: y });
-    }
-
-    let x = log_diff_exp(y, 0.0).map_err(|source| TransformError::Transform {
-        computation: "inverse-softplus",
-        source,
-    })?;
+pub fn softplus_inverse(y: f64) -> anyhow::Result<f64> {
+    let x = log_diff_exp(y, 0.0).context("inverse softplus has failed")?;
 
     Ok(x)
 }
@@ -136,24 +125,16 @@ mod tests {
     #[test]
     fn test_softplus_error_handling() {
         let x = f64::NAN;
-        let y = softplus(x);
+        let result = softplus(x);
 
-        assert!(matches!(
-            y,
-            Err(TransformError::Transform {
-                computation: _,
-                source: _
-            })
-        ));
+        assert!(result.is_err());
     }
 
     #[rstest]
     #[case(-1.0)]
     #[case(0.0)]
     fn test_softplus_inverse_error_handling(#[case] x: f64) {
-        assert!(matches!(
-            softplus_inverse(x),
-            Err(TransformError::InvalidSoftplusInput { value: _ })
-        ));
+        let result = softplus_inverse(x);
+        assert!(result.is_err());
     }
 }

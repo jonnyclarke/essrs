@@ -2,6 +2,7 @@
 
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
+#[derive(Debug)]
 pub struct WalkerState {
     current: Array2<f64>,
     next: Array2<f64>,

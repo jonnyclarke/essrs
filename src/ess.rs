@@ -1,23 +1,15 @@
 //! Primary API of the Ensemble Slice Sampler MCMC process.
 
+use anyhow::Context;
 use ndarray::{Array2, Array3, ArrayView2};
-use thiserror::Error;
 
 use crate::{
     chains::{ChainBuffer, static_buffer::StaticBuffer},
-    log_likelihood::{LogLikelihoodError, LogLikelihoodModel, WrappedLogLikelihoodModel},
+    log_likelihood::{LogLikelihoodModel, WrappedLogLikelihoodModel},
     moves::{DynEnsembleMove, EnsembleMove},
     state::WalkerState,
     threading::Threading,
 };
-
-/// Error enum for the EnsembleSliceSampler struct
-#[derive(Debug, Error)]
-pub enum InitialisationError {
-    /// initialisation fails due to invalid log-likelihood
-    #[error("initialisation of initial state has failed: {0}")]
-    InvalidLogLikelihood(#[from] LogLikelihoodError),
-}
 
 /// Ensemble Slice Sampler Object.
 ///
@@ -107,17 +99,17 @@ impl EnsembleSliceSampler {
     /// # Arguments:
     /// * model: log-likelihood model
     /// * physical: Array2 object [n_walker, n_parameter] containing initial conditions in physical parameter space
-    pub fn initialise<L>(
-        &mut self,
-        model: &L,
-        physical: ArrayView2<f64>,
-    ) -> Result<(), InitialisationError>
+    pub fn initialise<L>(&mut self, model: &L, physical: ArrayView2<f64>) -> anyhow::Result<()>
     where
         L: LogLikelihoodModel + ?Sized,
     {
         let mut internal = physical.to_owned();
 
-        model.wrapped_columnar_transform_physical_to_internal(physical, internal.view_mut())?;
+        model
+            .wrapped_columnar_transform_physical_to_internal(physical, internal.view_mut())
+            .context(
+                "initialisation failed during conversion of physical to internal coordinates",
+            )?;
 
         // this is used simply to pass to log-likelihood in case we need to report an error
         // TODO: can get rid of this allocation?
@@ -126,7 +118,9 @@ impl EnsembleSliceSampler {
         for i in 0..self.n_walkers {
             self.state.assign_ith_ll(
                 i,
-                model.wrapped_log_likelihood(internal.row(i), &mut physical.view_mut())?,
+                model
+                    .wrapped_log_likelihood(internal.row(i), &mut physical.view_mut())
+                    .context("initialisation failed . . . log-likelihood invalid")?,
             )
         }
 
@@ -147,8 +141,9 @@ impl EnsembleSliceSampler {
         &mut self,
         model: &dyn LogLikelihoodModel,
         physical: ArrayView2<f64>,
-    ) -> Result<(), InitialisationError> {
+    ) -> anyhow::Result<()> {
         self.initialise(model, physical)
+            .context("initialisation in dynamic mode failed")
     }
 
     /// Run burn in phase to converge walkers to posterior probability region

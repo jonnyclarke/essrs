@@ -1,6 +1,6 @@
 //! Functions for applying tanh parameter transforms
 
-use crate::functions::transforms::TransformError;
+use anyhow::ensure;
 
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
 /// Map an unconstrained variable to -1 < y < 1
@@ -8,7 +8,7 @@ use crate::functions::transforms::TransformError;
 /// $$
 /// y = \tanh\left( x \right) = \frac{\sinh\left(x\right)}{\cosh\left( x \right)}
 /// $$
-pub fn tanh_x(x: f64) -> Result<f64, TransformError> {
+pub fn tanh_x(x: f64) -> anyhow::Result<f64> {
     Ok(x.tanh())
 }
 
@@ -18,14 +18,14 @@ pub fn tanh_x(x: f64) -> Result<f64, TransformError> {
 /// $$
 /// y = \tanh\left( x \right) = \frac{\sinh\left(x\right)}{\cosh\left( x \right)}
 /// $$
-pub fn tanh_log_jacobian(x: f64) -> Result<(f64, f64), TransformError> {
+pub fn tanh_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
     let y = tanh_x(x)?;
     let lj = (1.0 - y.powi(2)).ln();
     Ok((y, lj))
 }
 
 /// In place function computing tanh transform and log jacobian
-pub fn tanh_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> Result<(), TransformError> {
+pub fn tanh_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Result<()> {
     let (y, lj) = tanh_log_jacobian(*x)?;
 
     *x = y;
@@ -40,10 +40,11 @@ pub fn tanh_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> Result<(), Transf
 /// $$
 /// x = \atanh\left( x \right)
 /// $$
-pub fn tanh_inverse(y: f64) -> Result<f64, TransformError> {
-    if (y < -1.0) || (1.0 < y) {
-        return Err(TransformError::InvalidAtanhInput { value: y });
-    }
+pub fn tanh_inverse(y: f64) -> anyhow::Result<f64> {
+    ensure!(
+        y.gt(&-1.0_f64) && y.lt(&1.0_f64),
+        "invalid argument to atanh(x), x={y}, and -1 < x < 1 required"
+    );
 
     Ok(y.atanh())
 }
@@ -110,9 +111,6 @@ mod tests {
     #[case(-1.1)]
     #[case(1.1)]
     fn test_tanh_inverse_failure(#[case] x: f64) {
-        assert!(matches!(
-            tanh_inverse(x),
-            Err(TransformError::InvalidAtanhInput { value: _ })
-        ));
+        assert!(tanh_inverse(x).is_err());
     }
 }

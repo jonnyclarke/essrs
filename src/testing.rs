@@ -1,8 +1,11 @@
 //! Builders for crate testing only
 
-use ndarray::{Array1, Array2, array};
+use anyhow::ensure;
+use ndarray::{Array1, Array2, ArrayView1, array};
 
-use crate::{chains::static_buffer::StaticBuffer, state::WalkerState};
+use crate::{
+    chains::static_buffer::StaticBuffer, log_likelihood::LogLikelihoodModel, state::WalkerState,
+};
 
 /// Builder for a walker state object
 pub struct WalkerStateBuilder {
@@ -62,4 +65,49 @@ pub fn make_test_static_buffer() -> StaticBuffer {
     ]);
 
     buffer
+}
+
+pub struct TestLeftRightUniformLogL {
+    l: f64,
+    r: f64,
+    p: f64,
+}
+
+impl TestLeftRightUniformLogL {
+    pub fn new(l: f64, r: f64) -> anyhow::Result<Self> {
+        ensure!(
+            r.gt(&l),
+            "require l < r in uniform log likelihood, arguments are l(={l}) >= r(={r})"
+        );
+        let p = 1.0 / (r - l);
+        Ok(Self { l, r, p })
+    }
+
+    pub fn get_lr(&self) -> (f64, f64) {
+        (self.l, self.r)
+    }
+
+    pub fn get_p(&self) -> f64 {
+        self.p
+    }
+}
+
+impl Default for TestLeftRightUniformLogL {
+    fn default() -> Self {
+        Self::new(-5.0, 5.0).unwrap()
+    }
+}
+
+impl LogLikelihoodModel for TestLeftRightUniformLogL {
+    fn get_n_parameters(&self) -> usize {
+        1
+    }
+
+    fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
+        if parameters[0].gt(&self.l) && parameters[0].lt(&self.r) {
+            return Ok(self.p);
+        }
+
+        Ok(f64::NEG_INFINITY)
+    }
 }

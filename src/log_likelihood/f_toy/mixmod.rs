@@ -1,7 +1,4 @@
 // ! Generic implementation of a mixture mdoel
-// ! TODO: evaluate feasibility
-// !
-// ! * would require each function to also return a point-wise array-type of log-likelihoods
 
 use std::sync::Arc;
 

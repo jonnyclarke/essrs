@@ -1,19 +1,17 @@
+use anyhow::{Context, ensure};
 use ndarray::{ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
 
-use crate::log_likelihood::{LogLikelihoodError, LogLikelihoodModel};
+use crate::log_likelihood::LogLikelihoodModel;
 
 pub(crate) trait WrappedLogLikelihoodModel: LogLikelihoodModel {
     fn wrapped_columnar_transform_physical_to_internal(
         &self,
         physical: ArrayView2<f64>,
         internal: ArrayViewMut2<f64>,
-    ) -> Result<(), LogLikelihoodError> {
+    ) -> anyhow::Result<()> {
         self.columnar_transform_physical_to_internal(physical, internal)
-            .map_err(
-                |source| LogLikelihoodError::UserDefLogLikelihoodFnError {
-                    context_string: "Parameter conversion, columnwise, from physical to internal scale has failed",
-                    source,
-                }
+            .context(
+                "parameter conversion, columnwise, from physical to internal scale has failed",
             )?;
 
         Ok(())
@@ -23,13 +21,10 @@ pub(crate) trait WrappedLogLikelihoodModel: LogLikelihoodModel {
         &self,
         internal: ArrayView2<f64>,
         physical: ArrayViewMut2<f64>,
-    ) -> Result<(), LogLikelihoodError> {
+    ) -> anyhow::Result<()> {
         self.columnar_transform_internal_to_physical(internal, physical)
-            .map_err(
-                |source| LogLikelihoodError::UserDefLogLikelihoodFnError {
-                    context_string: "Parameter conversion, columnwise, from internal to physical scale has failed",
-                    source,
-                }
+            .context(
+                "parameter conversion, columnwise, from internal to physical scale has failed",
             )?;
 
         Ok(())
@@ -40,14 +35,9 @@ pub(crate) trait WrappedLogLikelihoodModel: LogLikelihoodModel {
         log_jacobian: &mut f64,
         internal: ArrayView1<f64>,
         physical: &mut ArrayViewMut1<f64>,
-    ) -> Result<(), LogLikelihoodError> {
+    ) -> anyhow::Result<()> {
         self.convert_internal_to_physical_tracking_ll_warp(log_jacobian, internal, physical)
-            .map_err(
-                |source| LogLikelihoodError::UserDefLogLikelihoodFnError {
-                    context_string: "parameter conversion, tracking log-jacobian contribution, from internal to physical scale has failed",
-                    source,
-                }
-            )?;
+            .context("parameter conversion, tracking log-jacobian contribution, from internal to physical scale has failed")?;
 
         Ok(())
     }
@@ -58,7 +48,7 @@ pub(crate) trait WrappedLogLikelihoodModel: LogLikelihoodModel {
         &self,
         internal: ArrayView1<f64>,
         physical: &mut ArrayViewMut1<f64>,
-    ) -> Result<f64, LogLikelihoodError> {
+    ) -> anyhow::Result<f64> {
         let mut log_jacobian: f64 = 0.0;
 
         self.wrapped_convert_internal_to_physical_tracking_ll_warp(
@@ -67,24 +57,21 @@ pub(crate) trait WrappedLogLikelihoodModel: LogLikelihoodModel {
             physical,
         )?;
 
-        let ll_parameters = self.log_likelihood(physical.view()).map_err(|source| {
-            LogLikelihoodError::UserDefLogLikelihoodFnError {
-                context_string: "user-defined log-likelihood function has failed",
-                source,
-            }
-        })?;
+        let ll_parameters = self
+            .log_likelihood(physical.view())
+            .context("user defined log-likelihood function has failed")?;
 
-        if ll_parameters.is_nan() {
-            return Err(LogLikelihoodError::LogLikelihoodIsNan {
-                params: physical.to_owned(),
-            });
-        }
+        ensure!(
+            !ll_parameters.is_nan(),
+            "user defined log-likelihood returns NaN, parameters:\n\t[{:#?}]",
+            physical.to_owned()
+        );
 
-        if ll_parameters.is_infinite() && ll_parameters.is_sign_positive() {
-            return Err(LogLikelihoodError::LogLikelihoodIsInfinite {
-                params: physical.to_owned(),
-            });
-        }
+        ensure!(
+            ll_parameters.ne(&f64::INFINITY),
+            "user defined log-likelihood returns +INF, parameters:\n\t[{:#?}]",
+            physical.to_owned()
+        );
 
         Ok(log_jacobian + ll_parameters)
     }

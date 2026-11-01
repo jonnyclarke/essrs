@@ -19,30 +19,6 @@ mod helpers;
 use anyhow;
 pub use helpers::{helper_generate_random_gaussian_points, random_normal_points};
 use ndarray::{Array1, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
-use thiserror::Error;
-
-/// Possible errors of the User Defined Log-Likelihood function
-#[derive(Debug, Error)]
-pub enum LogLikelihoodError {
-    /// Log likelihood is NaN
-    #[error("log likelihood determined to be NaN for parameters: {params}")]
-    LogLikelihoodIsNan { params: Array1<f64> },
-
-    /// Log Likelihood is + infinite
-    /// NOTE: a -inf log-likelihood is tolerated by the system and treated as an impossible region
-    #[error("log likelihood determined to be infinite for parameters: {params}")]
-    LogLikelihoodIsInfinite { params: Array1<f64> },
-
-    /// Error in the Log-likelihood function itself
-    /// this maps any error that occurs in the UserDefined function back into the crate error system
-    #[error("{context_string}:\n{source}")]
-    UserDefLogLikelihoodFnError {
-        context_string: &'static str,
-
-        #[source]
-        source: anyhow::Error,
-    },
-}
 
 /// Trait for valid log-likelihood models.
 /// NOTE: Log-likelihood structure must not have a mutable internal state in order to use the parallelisation

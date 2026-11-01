@@ -1,15 +1,21 @@
+use anyhow::{Context, ensure};
 use ndarray::{Array1, Array2};
 use rand::rng;
 use rand_distr::{Distribution, LogNormal, Normal};
 
-pub fn random_normal_points(n: usize, mean: f64, std_dev: f64) -> Array1<f64> {
-    let normal = Normal::new(mean, std_dev).expect("Invalid normal distribution parameters");
+pub fn random_normal_points(n: usize, mean: f64, std_dev: f64) -> anyhow::Result<Array1<f64>> {
+    ensure!(
+        std_dev.gt(&0.0_f64),
+        "invalid standard deviation sigma(={std_dev})<0"
+    );
+
+    let normal = Normal::new(mean, std_dev).context("normal distribution sampling has failed")?;
 
     let mut rng = rng();
 
     let v: Vec<f64> = (0..n).map(|_| normal.sample(&mut rng)).collect();
 
-    Array1::from(v)
+    Ok(Array1::from(v))
 }
 
 pub fn helper_generate_random_gaussian_points(n: usize) -> anyhow::Result<Array2<f64>> {
@@ -42,6 +48,15 @@ pub fn helper_generate_random_gaussian_points(n: usize) -> anyhow::Result<Array2
 mod tests {
 
     use super::*;
+
+    #[test]
+    fn test_random_normal_points() -> anyhow::Result<()> {
+        let n = 100;
+        let arr = random_normal_points(n, 1.0, 2.0)?;
+        assert!(arr.iter().all(|x| x.is_finite()));
+
+        Ok(())
+    }
 
     #[test]
     fn test_helper_generate_random_gaussian_points_shape() -> anyhow::Result<()> {

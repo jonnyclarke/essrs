@@ -135,3 +135,48 @@ impl DynEnsembleMove for DiffConvMove {
         self.jump_implementation(iteration, log_likelihood_model, state, threads)
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use ndarray::array;
+
+    use super::*;
+    use crate::testing::{TestLeftRightUniformLogL, WalkerStateBuilder};
+
+    #[test]
+    fn test_initialisation() {
+        let _ = DiffConvMove::new();
+        let _ = DiffConvMove::default();
+    }
+
+    #[test]
+    fn test_jump_implementation() -> anyhow::Result<()> {
+        let model = TestLeftRightUniformLogL::default();
+
+        let mut state = WalkerStateBuilder::new(3, 1)
+            .set_state_matrix(array![[-2.0], [1.3], [3.45]])
+            .set_ll_vector(array![model.get_p(), model.get_p(), model.get_p()])
+            .swap()
+            .construct();
+
+        println!("{:#?}", state);
+
+        let threads = Threading::new(Some(1), 1)?;
+
+        let diff_move = DiffConvMove::new();
+        diff_move.jump_implementation(1, &model, &mut state, &threads)?;
+
+        state.swap();
+
+        for i in 0..3 {
+            assert!(state.get_ith_ll_value(i).eq(&model.get_p()));
+
+            let x = state.get_ith_state_vector_view(i)[0];
+            let (l, r) = model.get_lr();
+            assert!(x.gt(&l) && x.lt(&r))
+        }
+
+        Ok(())
+    }
+}

@@ -1,41 +1,17 @@
 //! Module containing numerical helper functions.
 //! These functions are designed to help perform logarithmic operations while avoiding numerical under- or overflow.
 //! Such functions arise often in mixture models where single-point probability is the sum of multiple components.
+use anyhow::ensure;
 use ndarray::{Array1, ArrayView1};
-use thiserror::Error;
-
-/// Enum containing error from numerical functions
-#[derive(Debug, Error)]
-pub enum NumericalError {
-    /// Invalid argument passed to a computation
-    #[error("non-finite argument passed to {computation}: {a}")]
-    InvalidArgumentError {
-        ///.
-        computation: &'static str,
-        ///.
-        a: f64,
-    },
-
-    /// Invalid inputs to log diff-exp
-    #[error(
-        "invalid values passed to `log_diff_exp`: {a} <= {b} :: results in ln(-0) which is undefined"
-    )]
-    InvalidLogDiffExpInputs {
-        ///.
-        a: f64,
-        ///.
-        b: f64,
-    },
-}
 
 /// Apply a numerical function to two array-views outputting a distinct third array
 pub fn apply_numerical_f_array1<F>(
     f: F,
     a_arr: ArrayView1<f64>,
     b_arr: ArrayView1<f64>,
-) -> Result<Array1<f64>, NumericalError>
+) -> anyhow::Result<Array1<f64>>
 where
-    F: Fn(f64, f64) -> Result<f64, NumericalError>,
+    F: Fn(f64, f64) -> anyhow::Result<f64>,
 {
     let mut out = Array1::<f64>::zeros(a_arr.len());
 
@@ -47,11 +23,11 @@ where
 }
 
 /// Numerically robust method to take difference of exponentials from exponents
-pub fn log_diff_exp(a: f64, b: f64) -> Result<f64, NumericalError> {
-    if a <= b {
-        // Difference would be zero or negative → log undefined
-        return Err(NumericalError::InvalidLogDiffExpInputs { a, b });
-    }
+pub fn log_diff_exp(a: f64, b: f64) -> anyhow::Result<f64> {
+    ensure!(
+        a.gt(&b),
+        "invalid arguments to 'log_diff_exp', a <= b, {a} <= {b} "
+    );
 
     Ok(a + (1.0 - (b - a).exp()).ln())
 }
@@ -75,19 +51,9 @@ pub fn log_diff_exp(a: f64, b: f64) -> Result<f64, NumericalError> {
 ///
 /// # Returns
 /// `Option<f64>` - Logarithm of sum of exponentiated values.
-pub fn log_sum_exp(a: f64, b: f64) -> Result<f64, NumericalError> {
-    if !a.is_finite() {
-        return Err(NumericalError::InvalidArgumentError {
-            computation: "log_sum_exp",
-            a,
-        });
-    }
-    if !b.is_finite() {
-        return Err(NumericalError::InvalidArgumentError {
-            computation: "log_sum_exp",
-            a: b,
-        });
-    }
+pub fn log_sum_exp(a: f64, b: f64) -> anyhow::Result<f64> {
+    ensure!(a.is_finite(), "invalid argument to 'log_sum_exp', a = {a}");
+    ensure!(b.is_finite(), "invalid argument to 'log_sum_exp', b = {a}");
 
     let v_max = a.max(b);
 
@@ -149,10 +115,9 @@ mod tests {
     #[case(0.0, 1.0)]
     #[case(-2.0, -1.0)]
     fn test_log_diff_exp_none(#[case] a: f64, #[case] b: f64) {
-        assert!(matches!(
-            log_diff_exp(a, b),
-            Err(NumericalError::InvalidLogDiffExpInputs { a: _, b: _ })
-        ));
+        let result = log_diff_exp(a, b);
+
+        assert!(result.is_err());
     }
 
     #[test]

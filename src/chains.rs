@@ -4,15 +4,6 @@
 pub mod static_buffer;
 
 use ndarray::{Array2, Array3, ArrayViewMut1, ArrayViewMut2};
-use thiserror::Error;
-
-/// Errors accessing the chain
-#[derive(Debug, Error)]
-pub enum ChainError {
-    /// User attempts to access an empty chain buffer
-    #[error("invalid access to empty chain buffer")]
-    EmptyChainBufferError,
-}
 
 /// Trait containing all required methods of the chain storage struct.
 pub trait ChainBuffer {
