@@ -5,6 +5,9 @@ use anyhow::ensure;
 use ndarray::{Array1, ArrayView1};
 
 /// Apply a numerical function to two array-views outputting a distinct third array
+///
+/// # Errors
+/// * propagates input `f` errors
 pub fn apply_numerical_f_array1<F>(
     f: F,
     a_arr: ArrayView1<f64>,
@@ -23,6 +26,9 @@ where
 }
 
 /// Numerically robust method to take difference of exponentials from exponents
+///
+/// # Errors
+/// * a < b; results in ln(-x)
 pub fn log_diff_exp(a: f64, b: f64) -> anyhow::Result<f64> {
     ensure!(
         a.gt(&b),
@@ -51,6 +57,9 @@ pub fn log_diff_exp(a: f64, b: f64) -> anyhow::Result<f64> {
 ///
 /// # Returns
 /// `Option<f64>` - Logarithm of sum of exponentiated values.
+///
+/// # Errors
+/// * either input is infinite
 pub fn log_sum_exp(a: f64, b: f64) -> anyhow::Result<f64> {
     ensure!(a.is_finite(), "invalid argument to 'log_sum_exp', a = {a}");
     ensure!(b.is_finite(), "invalid argument to 'log_sum_exp', b = {a}");

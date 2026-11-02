@@ -56,11 +56,14 @@ pub fn normal_1d_deconv(
 pub fn normal_2d_gmm_deconv(
     n_components: usize,
     data: PyReadonlyArray2<f64>,
-) -> PyLogLikelihoodModel {
+) -> PyResult<PyLogLikelihoodModel> {
     let d = data.as_array().to_owned();
-    PyLogLikelihoodModel {
-        model: Arc::new(GaussianMixModel2DimUnDeConv::new(d, n_components)),
+    Ok(PyLogLikelihoodModel {
+        model: Arc::new(
+            GaussianMixModel2DimUnDeConv::new(d, n_components)
+                .context("construction of normal-2d python binding has failed")?,
+        ),
         p_data_g_theta: None,
         p_theta_g_data: None,
-    }
+    })
 }

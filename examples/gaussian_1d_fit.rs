@@ -1,3 +1,6 @@
+//! Example
+//! Fit a one dimensional gaussian function
+
 use std::time::Instant;
 
 use essrs::moves::differential_move::DifferentialMove;
@@ -51,7 +54,7 @@ fn main() -> anyhow::Result<()> {
 
     let move_handler = DifferentialMove::new();
     let model = GaussianLl1dDataErrors::new(&data);
-    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, None, None);
+    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, None, None)?;
 
     let start = generate_cloud(&[0.1, 1.0], N_WALKERS, &[0.05, 0.05]);
 

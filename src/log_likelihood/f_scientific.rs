@@ -1,3 +1,5 @@
+//! Scientific style log-likelihood functions: P(theta|data)
+
 mod mixmod;
 mod normal_1d_err_deconv;
 mod normal_2d_mix_err_deconv;

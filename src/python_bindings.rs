@@ -162,15 +162,15 @@ impl PyEnsembleConfig {
 #[doc = "Run ensemble slice sampler MCMC."]
 #[doc = ""]
 #[doc = "Args:"]
-#[doc = "    log_likelihood: The model being fit."]
-#[doc = "    config: Sampler configuration specifying the number of steps, walkers, parameters, and burn-in steps."]
-#[doc = "    burn_in_move: Move handler used during burn-in."]
-#[doc = "    sampling_move: Move handler used for posterior sampling."]
-#[doc = "    initial_conditions: Initial conditions from which the fit will be launched."]
+#[doc = "    `log_likelihood`: The model being fit."]
+#[doc = "    `config`: Sampler configuration specifying the number of steps, walkers, parameters, and burn-in steps."]
+#[doc = "    `burn_in_move`: Move handler used during burn-in."]
+#[doc = "    `sampling_move`: Move handler used for posterior sampling."]
+#[doc = "    `initial_conditions`: Initial conditions from which the fit will be launched."]
 #[doc = ""]
 #[doc = "Returns:"]
-#[doc = "    A tuple containing the chains (n_samples, N_WALKERS, N_PARAMETERS)"]
-#[doc = "    and log-likelihood values (n_samples, N_WALKERS)."]
+#[doc = "    A tuple containing the chains (`n_samples`, `N_WALKERS`, `N_PARAMETERS`)"]
+#[doc = "    and log-likelihood values (`n_samples`, `N_WALKERS`)."]
 fn run_mcmc<'py>(
     py: Python<'py>,
     log_likelihood: PyRef<'_, PyLogLikelihoodModel>,
@@ -208,7 +208,7 @@ fn run_mcmc<'py>(
         config.n_parameters,
         config.n_threads,
         config.n_thinning_per_sample,
-    );
+    )?;
 
     sampler
         .initialise_dyn(model.as_ref(), initial_conditions.view())

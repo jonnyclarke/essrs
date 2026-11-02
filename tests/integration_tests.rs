@@ -1,3 +1,5 @@
+//! Integration Tests
+
 // TOY PROBLEMS
 #[path = "integration_tests/toy_normal.rs"]
 mod toy_normal;

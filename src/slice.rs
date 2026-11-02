@@ -137,13 +137,13 @@ mod tests {
         log_likelihood::f_toy::normal::AnalyticNormalToyLogL,
     };
 
-    fn test_ll() -> AnalyticNormalToyLogL {
-        AnalyticNormalToyLogL::new(0.0, 1.0)
+    fn test_ll() -> anyhow::Result<AnalyticNormalToyLogL> {
+        Ok(AnalyticNormalToyLogL::new(0.0, 1.0)?)
     }
 
     #[test]
     fn test_step_out() -> anyhow::Result<()> {
-        let model = test_ll();
+        let model = test_ll()?;
 
         let anchor = array![0.0];
         let direction = array![0.3];

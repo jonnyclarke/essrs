@@ -2,14 +2,18 @@
 
 use std::f64::consts::PI;
 
+use anyhow::ensure;
 use nalgebra::{DMatrix, DVector};
 
-/// Compute the numerical f(n_dimensions) constant
+/// Compute the numerical `f(n_dimensions)` constant
 pub fn ndim_to_norm_const(n: usize) -> f64 {
     n as f64 * (2.0 * PI).ln()
 }
 
 /// Compute a covariance matrix to cholesky
+///
+/// # Panics
+/// * covariance is not positive definite
 pub fn covariance_to_cholesky_l(covariance: &DMatrix<f64>) -> DMatrix<f64> {
     // Cholesky decomposition: covariance = L * L^T
     let chol = covariance
@@ -29,6 +33,9 @@ pub fn cholesky_l_to_log_det(cholesky_l: &DMatrix<f64>) -> f64 {
 }
 
 /// Compute mahalanobis distance of (x - mu) from cholesky matrix
+///
+/// # Panics
+/// * solving for the lower triangular cholesky matrix fails
 pub fn mahalanobis_from_cholesky(
     x: &DVector<f64>,
     mean: &DVector<f64>,
@@ -49,15 +56,28 @@ pub fn normal_nd_ll(n_pi_ln_const: f64, log_det: f64, mahalanobis: f64) -> f64 {
 }
 
 /// Compute log likelihood of an n-dimensional normal distribution
+///
+/// # Errors
+/// * ensure that the `x` and `mean` arrays are the same length
+/// * ensure that `covariance` is the right shape given `x` shape
 pub fn multivariate_gaussian_log_likelihood(
     x: &DVector<f64>,
     mean: &DVector<f64>,
     covariance: &DMatrix<f64>,
-) -> f64 {
+) -> anyhow::Result<f64> {
     let n = x.len();
 
-    assert_eq!(mean.len(), n);
-    assert_eq!(covariance.shape(), (n, n));
+    ensure!(
+        mean.len().eq(&x.len()),
+        "length of x, {}, and mean, {}, should be equal",
+        x.len(),
+        mean.len()
+    );
+    ensure!(
+        covariance.shape().eq(&(n, n)),
+        "covariance should have shape ({n}, {n}), found {:#?}",
+        covariance.shape()
+    );
 
     let cholesky_l = covariance_to_cholesky_l(covariance);
 
@@ -65,5 +85,5 @@ pub fn multivariate_gaussian_log_likelihood(
 
     let mahalanobis = mahalanobis_from_cholesky(x, mean, &cholesky_l);
 
-    -0.5 * normal_nd_ll(ndim_to_norm_const(n), log_det, mahalanobis)
+    Ok(-0.5 * normal_nd_ll(ndim_to_norm_const(n), log_det, mahalanobis))
 }

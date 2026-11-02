@@ -1,6 +1,6 @@
 //! Implementation of statistical uncertainty deconvolution
 
-use anyhow;
+use anyhow::ensure;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2, Zip, s};
 
 use crate::{
@@ -25,15 +25,15 @@ pub const N_PARAMETERS_NORMAL_2D: usize = 5;
 /// Uncertainty De-Convolution
 ///
 /// This requires 5 parameters per component:
-/// * mu_x
-/// * mu_y
-/// * sigma_x
-/// * sigma_y
-/// * p
+/// * `mu_x`
+/// * `mu_y`
+/// * `sigma_x`
+/// * `sigma_y`
+/// * `p`
 ///
 /// Note:
 /// - the sigmas must be >0
-/// - the correlation coefficient must be [-1 <= p <= 1]
+/// - the correlation coefficient must be [-1 <= `p` <= 1]
 pub struct GaussianMixModel2DimUnDeConv {
     data: Array2<f64>,
     n_components: usize,
@@ -41,10 +41,27 @@ pub struct GaussianMixModel2DimUnDeConv {
 
 #[allow(dead_code)]
 impl GaussianMixModel2DimUnDeConv {
-    pub fn new(data: Array2<f64>, n_components: usize) -> Self {
-        assert!(n_components >= 1, "N components must be greater than 1");
-        assert!(data.ncols() == 5, "The data should have shape (n, 5)");
-        Self { data, n_components }
+    /// Constructor method
+    ///
+    /// # Arguments
+    /// * `data`: Input of shape (n, 5) where the columns correspond to `x`, `y`, `x_err`, `y_err`, `corr`
+    /// * `n_components`: The number of components being fit in the mixture model
+    ///
+    /// # Errors
+    /// * the number of components is < 1
+    /// * the data is of the correct shape (should be [n, 5])
+    pub fn new(data: Array2<f64>, n_components: usize) -> anyhow::Result<Self> {
+        ensure!(
+            n_components >= 1,
+            "n components, {n_components}, should exceed 1"
+        );
+        ensure!(
+            data.ncols() == 5,
+            "the data, with shape [{}, {}], should have shape [n, 5]",
+            data.nrows(),
+            data.ncols()
+        );
+        Ok(Self { data, n_components })
     }
 
     fn get_x_value<'a>(&'a self) -> ArrayView1<'a, f64> {
@@ -216,7 +233,7 @@ impl LogLikelihoodModel for GaussianMixModel2DimUnDeConv {
     }
 
     /// here we have the annoying problem that we need to add raw likelihood together for each of the components.
-    /// This requires use of the log_sum_exp function implemented in functions module.
+    /// This requires use of the `log_sum_exp` function implemented in functions module.
     fn log_likelihood(&self, physical: ArrayView1<f64>) -> anyhow::Result<f64> {
         // extract views of the data
         let x = self.get_x_value();
@@ -283,8 +300,8 @@ mod tests {
 
     use super::*;
     #[test]
-    fn test_gmm_builder() {
-        let gmm = GaussianMixModel2DimUnDeConv::new(array![[1.1, 1.2, 0.1, 0.2, 0.0]], 1);
+    fn test_gmm_builder() -> anyhow::Result<()> {
+        let gmm = GaussianMixModel2DimUnDeConv::new(array![[1.1, 1.2, 0.1, 0.2, 0.0]], 1)?;
 
         let _ = gmm.get_x_value();
         let _ = gmm.get_y_value();
@@ -298,6 +315,8 @@ mod tests {
         let _ = gmm.get_index_kth_y_mu(0);
         let _ = gmm.get_index_kth_y_er(0);
         let _ = gmm.get_index_kth_p(0);
+
+        Ok(())
     }
 
     #[test]
@@ -308,7 +327,7 @@ mod tests {
             [0.5, 1.1, 1.1, 0.5, 0.5, 0.2, 1.2, 1.3, 0.5, 0.5, 0.2],
             [0.5, 1.1, 1.1, 0.5, 0.5, 0.2, 1.2, 1.3, 0.5, 0.5, 0.2],
         ];
-        let gmm = GaussianMixModel2DimUnDeConv::new(d, 2);
+        let gmm = GaussianMixModel2DimUnDeConv::new(d, 2)?;
 
         let mut internal = physical.clone();
 

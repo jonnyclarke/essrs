@@ -28,6 +28,9 @@ use crate::functions::numerical::{log_diff_exp, log_sum_exp};
 ///
 /// # Returns
 /// * `y` - the parameter in the constrained space `0 <`
+///
+/// # Errors
+/// * propagates `log_sum_exp` error
 pub fn softplus(x: f64) -> anyhow::Result<f64> {
     let y = log_sum_exp(0.0, x).context(format!("softplus failed with argument x={x}"))?;
 
@@ -35,13 +38,19 @@ pub fn softplus(x: f64) -> anyhow::Result<f64> {
 }
 
 /// Compute softplus with log-jacobian transform
+///
+/// # Errors
+/// * propagates `softplus` error
 pub fn softplus_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
     let y = softplus(x)?;
 
     Ok((y, x - y))
 }
 
-/// Compute softplus transform in place and modify mutable log_jacobian argument
+/// Compute softplus transform in place and modify mutable `log_jacobian` argument
+///
+/// # Errors
+/// * propagates `softplus_log_jacobian` error
 pub fn softplus_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Result<()> {
     let (s, lj) = softplus_log_jacobian(*x)?;
 
@@ -64,6 +73,9 @@ pub fn softplus_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Resul
 ///
 /// # Returns
 /// * `x` - the corresponding value in unconstrained space
+///
+/// # Errors
+/// * propagates `log_diff_exp` error
 pub fn softplus_inverse(y: f64) -> anyhow::Result<f64> {
     let x = log_diff_exp(y, 0.0).context("inverse softplus has failed")?;
 

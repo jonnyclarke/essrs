@@ -13,6 +13,14 @@ use crate::{
     log_likelihood::LogLikelihoodModel,
 };
 
+/// Toy normal distribution in N dimensions
+///
+/// # Fields:
+/// * `n_dimensions`: the number of dimensions of the multivariate normal distribution
+/// * `mu`: the centroid values of the normal distribution
+/// * `ln_n_pi_const`: the constant pi factor required for correct normalisation; f(`n_dimensions`)
+/// * `log_det`: pre-computation of the log-determinant term
+/// * `cholesky_l`: low triangular cholesky decomposition matrix used for the likelihoood computation
 pub struct AnalyticNormalNDimensional {
     n_dimensions: usize,
 
@@ -27,7 +35,7 @@ pub struct AnalyticNormalNDimensional {
 pub struct Missing;
 pub struct Set;
 
-/// One dimensional Gaussian mixture -- Builder
+/// N dimensional Gaussian mixture -- Builder
 pub struct BuildAnalyticNormalNDimensional<M, S, C> {
     n_dimensions: usize,
 
@@ -40,6 +48,10 @@ pub struct BuildAnalyticNormalNDimensional<M, S, C> {
 }
 
 impl BuildAnalyticNormalNDimensional<Missing, Missing, Missing> {
+    /// Constructor
+    ///
+    /// # Arguments:
+    /// * `n_dimensions`: Number of dimensions of the normal distribution. Pre-specified to enable checks on function values.
     pub fn new(n_dimensions: usize) -> Self {
         Self {
             n_dimensions,
@@ -53,6 +65,13 @@ impl BuildAnalyticNormalNDimensional<Missing, Missing, Missing> {
 }
 
 impl<M, S, C> BuildAnalyticNormalNDimensional<M, S, C> {
+    /// Setter for 'mu' parameter
+    ///
+    /// # Arguments:
+    /// * mu: n-Centroids of the n-dimensional normal distribution
+    ///
+    /// # Errors:
+    /// * returns an error if the length of mu does not match the specified dimensionallity
     pub fn mu(mut self, mu: Array1<f64>) -> BuildAnalyticNormalNDimensional<Set, S, C> {
         if mu.len() != self.n_dimensions {
             self.errors.push(anyhow!(
@@ -72,6 +91,13 @@ impl<M, S, C> BuildAnalyticNormalNDimensional<M, S, C> {
         }
     }
 
+    /// Setter for 'sigma' parameter
+    ///
+    /// # Arguments:
+    /// * sigma: standard deviation of the n-dimensional normal distribution
+    ///
+    /// # Errors:
+    /// * returns an error if the length of sigma does not match the specified dimensionallity
     pub fn sigma(mut self, sigma: Array1<f64>) -> BuildAnalyticNormalNDimensional<M, Set, C> {
         if sigma.len() != self.n_dimensions {
             self.errors.push(anyhow!(
@@ -91,6 +117,13 @@ impl<M, S, C> BuildAnalyticNormalNDimensional<M, S, C> {
         }
     }
 
+    /// Setter for 'correlation' parameter
+    ///
+    /// # Arguments:
+    /// * correlation: correlations between the n-dimensions of the distribution. This must have length = n * (n-1) / 2.
+    ///
+    /// # Errors:
+    /// * returns an error if input length does not match required shape
     pub fn correlation(
         mut self,
         correlation: Array1<f64>,
@@ -118,6 +151,16 @@ impl<M, S, C> BuildAnalyticNormalNDimensional<M, S, C> {
 }
 
 impl BuildAnalyticNormalNDimensional<Set, Set, Set> {
+    /// Builder generating N-dimensional model struct
+    ///
+    /// This handles the computation of the normalising constant, the `log_det` term, and the cholesky decomposition in order to cache those values to prevent uneeded computation.
+    ///
+    /// # Errors
+    /// * if any previous construction stages have raised an error they will be propagated here.
+    ///
+    /// # Panics
+    /// * 'sigma' variable is still 'None'
+    /// * 'correlation' value is still 'None'
     pub fn build(self) -> anyhow::Result<AnalyticNormalNDimensional> {
         if !self.errors.is_empty() {
             bail!(
@@ -130,7 +173,7 @@ impl BuildAnalyticNormalNDimensional<Set, Set, Set> {
             );
         }
 
-        let cov = covariance_to_dmatrix(&self.sigma.unwrap(), &self.correlation.unwrap()).unwrap();
+        let cov = covariance_to_dmatrix(&self.sigma.unwrap(), &self.correlation.unwrap())?;
         let l = covariance_to_cholesky_l(&cov);
 
         Ok(AnalyticNormalNDimensional {

@@ -10,6 +10,8 @@ use anyhow::ensure;
 /// $$
 /// y = \frac{1}{1 + e^{-x}}
 /// $$
+///
+/// # Errors
 pub fn logistic(x: f64) -> anyhow::Result<f64> {
     let y = 1.0 / (1.0 + (-x).exp());
     Ok(y)
@@ -21,6 +23,9 @@ pub fn logistic(x: f64) -> anyhow::Result<f64> {
 /// $$
 /// \frac{dy}{dx} = \frac{e^{-x}}{\left( 1 + e^{-x} \right)^2}
 /// $$
+///
+/// # Errors
+/// * propages `logistic` error
 pub fn logistic_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
     let y = logistic(x)?;
 
@@ -37,6 +42,9 @@ pub fn logistic_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
 /// $$
 /// \frac{dy}{dx} = \frac{e^{-x}}{\left( 1 + e^{-x} \right)^2}
 /// $$
+///
+/// # Errors
+/// * propagates `logistic_log_jacobian` error
 pub fn logistic_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Result<()> {
     let (y, lj) = logistic_log_jacobian(*x)?;
 
@@ -52,6 +60,9 @@ pub fn logistic_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Resul
 /// $$
 /// x = \ln{\left[ \frac{y}{1 - y} \right]}
 /// $$
+///
+/// # Errors
+/// * raises an error when input value outside valid bounds; 0 < y < 1
 pub fn logistic_inverse(y: f64) -> anyhow::Result<f64> {
     ensure!(
         y.gt(&0.0_f64) && y.lt(&1.0_f64),

@@ -2,6 +2,15 @@
 
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
+/// Walker state
+/// Manages the current/next walker states and log-likelihood values.
+///
+/// # Fields:
+/// * `current`: the current walker state
+/// * `next`: the next walker state
+/// * `ll_current`: log-likelihood corresponding to the current walker state
+/// * `ll_next`: log-likelihood corresponding to the next walker state
+/// * `n`: the number of walkers
 #[derive(Debug)]
 pub struct WalkerState {
     current: Array2<f64>,
@@ -14,6 +23,7 @@ pub struct WalkerState {
 }
 
 impl WalkerState {
+    /// Constructor
     pub fn new(n_walkers: usize, n_parameters: usize) -> Self {
         Self {
             current: Array2::<f64>::zeros((n_walkers, n_parameters)),
@@ -26,17 +36,21 @@ impl WalkerState {
         }
     }
 
+    /// Get the number of walkers
     pub fn n_walkers(&self) -> usize {
         self.n
     }
 }
 
 impl WalkerState {
+    /// Swap memory address of current <--> next.
+    /// Enables buffer re-use without copying
     pub fn swap(&mut self) {
         std::mem::swap(&mut self.current, &mut self.next);
         std::mem::swap(&mut self.ll_current, &mut self.ll_next);
     }
 
+    /// Extract all buffers as independent arrays; needed to modify separate components in parallel
     pub fn parallel_buffers(
         &mut self,
     ) -> (
@@ -53,36 +67,43 @@ impl WalkerState {
         )
     }
 
-    // Assignment
+    /// Assign the state matrix
+    /// TODO: ensure array is the right size
     pub fn assign_state_matrix(&mut self, a: ArrayView2<f64>) {
         self.next.assign(&a)
     }
 
+    /// Assign the i^th state vector into the 'next' matrix
     pub fn assign_ith_state_vector(&mut self, index: usize, a: ArrayView1<f64>) {
         self.next.row_mut(index).assign(&a)
     }
 
+    /// Assign the full log-likelihood vector into 'next'
     pub fn assign_ll_vector(&mut self, ll: ArrayView1<f64>) {
         self.ll_next.assign(&ll)
     }
 
+    /// Assign an individual log-likelihood value into the 'next' array
     pub fn assign_ith_ll(&mut self, index: usize, ll: f64) {
         self.ll_next[index] = ll
     }
 
-    // Get views
+    /// Get a view of the 'current' state matrix
     pub fn get_state_matrix_view<'a>(&'a self) -> ArrayView2<'a, f64> {
         self.current.view()
     }
 
+    /// Get a view of the i^th 'current' state vector
     pub fn get_ith_state_vector_view<'a>(&'a self, i: usize) -> ArrayView1<'a, f64> {
         self.current.row(i)
     }
 
+    /// Get a view of the 'current' log-likelihood state
     pub fn get_ll_vector_view<'a>(&'a self) -> ArrayView1<'a, f64> {
         self.ll_current.view()
     }
 
+    /// Get the i^th 'current' log-likelihood value
     pub fn get_ith_ll_value(&self, i: usize) -> f64 {
         self.ll_current[i]
     }

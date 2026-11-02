@@ -30,6 +30,7 @@ const N_PARAMETERS_NEALS_FUNNEL: usize = 2;
 pub struct AnalyticNealsFunnelToyLogL {}
 
 impl AnalyticNealsFunnelToyLogL {
+    /// Constructor
     pub fn new() -> Self {
         Self {}
     }

@@ -67,6 +67,7 @@ pub fn make_test_static_buffer() -> StaticBuffer {
     buffer
 }
 
+/// Testing log-likelihood implementing a uniform probability distribution
 pub struct TestLeftRightUniformLogL {
     l: f64,
     r: f64,
@@ -74,6 +75,7 @@ pub struct TestLeftRightUniformLogL {
 }
 
 impl TestLeftRightUniformLogL {
+    /// Constructor
     pub fn new(l: f64, r: f64) -> anyhow::Result<Self> {
         ensure!(
             r.gt(&l),
@@ -83,10 +85,12 @@ impl TestLeftRightUniformLogL {
         Ok(Self { l, r, p })
     }
 
+    /// Get the value of the left and right bounds of the uniform distribution
     pub fn get_lr(&self) -> (f64, f64) {
         (self.l, self.r)
     }
 
+    /// Get the probability value corresponding to the uniform distribution (integral from left to right normalised to 1)
     pub fn get_p(&self) -> f64 {
         self.p
     }

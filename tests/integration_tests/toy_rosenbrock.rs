@@ -23,7 +23,7 @@ fn test_analytical_normal() -> anyhow::Result<()> {
     let move_handler = DifferentialMove::new();
     let model = AnalyticRosenbrockToyLogL::new(TARGET_A, TARGET_B);
 
-    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, None, None);
+    let mut ess = EnsembleSliceSampler::new(N_SAMPLES, N_WALKERS, N_PARAMETERS, None, None)?;
 
     let start = array![
         [0.1, 0.4],

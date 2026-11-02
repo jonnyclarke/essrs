@@ -2,14 +2,14 @@ use anyhow::bail;
 use nalgebra::{DMatrix, DVector};
 use ndarray::{Array1, ArrayView1};
 
-/// Convert ndarray Array1 into nalgebra DVector.
+/// Convert ndarray Array1 into nalgebra `DVector`.
 ///
 /// This is useful when transforming parameters into format required for N-dimensional normal distribution computations.
 pub fn array1_to_dvector(array: &Array1<f64>) -> DVector<f64> {
     DVector::from_iterator(array.len(), array.iter().copied())
 }
 
-/// Convert ndarray ArrayView1 into nalgebra DVector.
+/// Convert ndarray `ArrayView1` into nalgebra `DVector`.
 ///
 /// This is useful when transforming parameters into format required for N-dimensional normal distribution computations.
 pub fn arrayview1_to_dvector(array: &ArrayView1<f64>) -> DVector<f64> {
@@ -20,12 +20,15 @@ pub fn arrayview1_to_dvector(array: &ArrayView1<f64>) -> DVector<f64> {
 ///
 /// Performs transform from Array1 type into nalgebra type needed for N-dimensional normal distribution computations.
 ///
-/// # Arguments:
-/// * sigma: Standard deviations (diagonal = sigma[i]^2)
-/// * correlations: Lower triangular off-diagonal elements, ordered row-wise: [p10, p20, p21, p30, p31, p32, ...]
+/// # Arguments
+/// * `sigma`: Standard deviations (diagonal = sigma[i]^2)
+/// * `correlations`: Lower triangular off-diagonal elements, ordered row-wise: [p10, p20, p21, p30, p31, p32, ...]
 ///
-/// # Returns:
+/// # Returns
 /// * covariance matrix
+///
+/// # Errors
+/// * correlations is the wrong size relative to sigma
 pub fn covariance_to_dmatrix(
     sigma: &Array1<f64>,
     correlations: &Array1<f64>,

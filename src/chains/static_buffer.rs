@@ -19,9 +19,9 @@ impl StaticBuffer {
     /// Generate new static buffer
     ///
     /// # Arguments
-    /// * n_samples: the number of steps the sampler will take
-    /// * n_walkers: the number of walkers
-    /// * n_parameters: the number of parameters in the likelihood model
+    /// * `n_samples`: the number of steps the sampler will take
+    /// * `n_walkers`: the number of walkers
+    /// * `n_parameters`: the number of parameters in the likelihood model
     pub fn new(n_samples: usize, n_walkers: usize, n_parameters: usize) -> Self {
         Self {
             chains: Array3::<f64>::zeros((n_samples, n_walkers, n_parameters)),
