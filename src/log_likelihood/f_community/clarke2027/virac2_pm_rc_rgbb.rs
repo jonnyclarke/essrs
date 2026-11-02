@@ -19,6 +19,7 @@ use crate::{
     log_likelihood::LogLikelihoodModel,
 };
 
+/// Fit proper motion profile of RC and RGBB
 pub struct C2027LlViracV2ProperMotionRcRgbb {
     b_coeffs: Array2<f64>,
     pm: Array1<f64>,
@@ -30,6 +31,7 @@ pub struct C2027LlViracV2ProperMotionRcRgbb {
 }
 
 impl C2027LlViracV2ProperMotionRcRgbb {
+    /// Constructor
     pub fn new(
         b_coeffs: Array2<f64>,
         pm: Array1<f64>,

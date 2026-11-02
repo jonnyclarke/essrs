@@ -36,7 +36,7 @@ pub fn virac2_pm_rc_rgbb<'py>(
     let burn_move_handler = HybridOneInNMove::new(DifferentialMove::new(), DiffConvMove::new(), 10);
     let model = C2027LlViracV2ProperMotionRcRgbb::new(b_coeffs, pm, pme, theta_rc, weight);
 
-    let mut ess = EnsembleSliceSampler::new(max_n_steps, n_walkers, n_parameters, None, None);
+    let mut ess = EnsembleSliceSampler::new(max_n_steps, n_walkers, n_parameters, None, None)?;
 
     ess.initialise(&model, initial_conditions.view()).unwrap(); // compute log-likelihood of initial positions
     ess.run_burn_in(&model, &burn_move_handler, n_burn_in)

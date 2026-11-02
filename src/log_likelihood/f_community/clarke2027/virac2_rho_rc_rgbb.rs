@@ -16,6 +16,7 @@ use crate::{
     log_likelihood::LogLikelihoodModel,
 };
 
+/// Fit density profile of RC - RGBB with 2 peaks
 pub struct Clarke2027LogLiViracV2RcRgbb {
     ks: Array1<f64>,
     w_rc: Array1<f64>,
@@ -24,6 +25,7 @@ pub struct Clarke2027LogLiViracV2RcRgbb {
 }
 
 impl Clarke2027LogLiViracV2RcRgbb {
+    /// Constructor
     pub fn new(ks: Array1<f64>, w_rc: Array1<f64>, ks_min: f64, ks_max: f64) -> Self {
         Self {
             ks,

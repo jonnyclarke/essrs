@@ -1,3 +1,5 @@
+//! Log-Likelihood functions used in Clarke 2027 paper
+
 mod virac2_rho_rc;
 pub use virac2_rho_rc::Clarke2027LogLiViracV2Rc;
 
