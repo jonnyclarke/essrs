@@ -17,6 +17,7 @@ use crate::{
     log_likelihood::LogLikelihoodModel,
 };
 
+/// Fit density profile of RGB -- multi peak formalism
 pub struct Clarke2027LogLiViracV2Density {
     ks: Array1<f64>,
     // n: usize,
@@ -25,6 +26,7 @@ pub struct Clarke2027LogLiViracV2Density {
 }
 
 impl Clarke2027LogLiViracV2Density {
+    /// Constructor
     pub fn new(ks: Array1<f64>, ks_min: f64, ks_max: f64) -> Self {
         // let n = ks.len();
         Self {

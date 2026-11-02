@@ -15,6 +15,7 @@ use crate::{
     log_likelihood::LogLikelihoodModel,
 };
 
+/// Fit density profile of RC -- 1 peak
 pub struct Clarke2027LogLiViracV2Rc {
     ks: Array1<f64>,
     w_rc: Array1<f64>,
@@ -23,6 +24,7 @@ pub struct Clarke2027LogLiViracV2Rc {
 }
 
 impl Clarke2027LogLiViracV2Rc {
+    /// Constructor
     pub fn new(ks: Array1<f64>, w_rc: Array1<f64>, ks_min: f64, ks_max: f64) -> Self {
         Self {
             ks,

@@ -9,6 +9,7 @@ use crate::functions::{
 };
 use crate::{functions::priors::ln_prior_normal, log_likelihood::LogLikelihoodModel};
 
+/// Fit proper motion profile of Red Giant Branch
 pub struct C2027LlViracV2ProperMotion {
     b_coeffs: Array2<f64>,
     pm: Array1<f64>,
@@ -19,6 +20,7 @@ pub struct C2027LlViracV2ProperMotion {
 }
 
 impl C2027LlViracV2ProperMotion {
+    /// Constructor
     pub fn new(
         b_coeffs: Array2<f64>,
         pm: Array1<f64>,
