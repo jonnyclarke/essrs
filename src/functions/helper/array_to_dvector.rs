@@ -21,7 +21,7 @@ pub fn arrayview1_to_dvector(array: &ArrayView1<f64>) -> DVector<f64> {
 /// Performs transform from Array1 type into nalgebra type needed for N-dimensional normal distribution computations.
 ///
 /// # Arguments
-/// * `sigma`: Standard deviations (diagonal = sigma[i]^2)
+/// * `sigma`: Standard deviations (diagonal = sigma`\[`i`\]`^2)
 /// * `correlations`: Lower triangular off-diagonal elements, ordered row-wise: [p10, p20, p21, p30, p31, p32, ...]
 ///
 /// # Returns

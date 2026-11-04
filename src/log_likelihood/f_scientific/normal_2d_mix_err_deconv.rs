@@ -33,7 +33,7 @@ pub const N_PARAMETERS_NORMAL_2D: usize = 5;
 ///
 /// Note:
 /// - the sigmas must be >0
-/// - the correlation coefficient must be [-1 <= `p` <= 1]
+/// - the correlation coefficient must be `[-1 <= p <= 1]`
 pub struct GaussianMixModel2DimUnDeConv {
     data: Array2<f64>,
     n_components: usize,

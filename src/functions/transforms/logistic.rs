@@ -12,9 +12,20 @@ use anyhow::ensure;
 /// $$
 ///
 /// # Errors
+#[inline]
 pub fn logistic(x: f64) -> anyhow::Result<f64> {
-    let y = 1.0 / (1.0 + (-x).exp());
-    Ok(y)
+    const CUTOFF: f64 = 37.0;
+
+    let ax = x.abs();
+
+    if ax >= CUTOFF {
+        return if x > 0.0 { Ok(1.0) } else { Ok(0.0) };
+    }
+
+    let z = (-ax).exp();
+    let y = 1.0 / (1.0 + z);
+
+    if x >= 0.0 { Ok(y) } else { Ok(1.0 - y) }
 }
 
 #[cfg_attr(all(doc, feature = "doc-math"), katexit::katexit)]
@@ -26,10 +37,11 @@ pub fn logistic(x: f64) -> anyhow::Result<f64> {
 ///
 /// # Errors
 /// * propages `logistic` error
+#[inline]
 pub fn logistic_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
     let y = logistic(x)?;
 
-    let ll = y.ln() + (1.0 - y).ln();
+    let ll = y.ln() + (-y).ln_1p();
 
     Ok((y, ll))
 }
@@ -63,12 +75,13 @@ pub fn logistic_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Resul
 ///
 /// # Errors
 /// * raises an error when input value outside valid bounds; 0 < y < 1
+#[inline]
 pub fn logistic_inverse(y: f64) -> anyhow::Result<f64> {
     ensure!(
         y.gt(&0.0_f64) && y.lt(&1.0_f64),
         "invalid value, {y}, passed to 'logistic_inverse', requires 0 < y < 1 "
     );
-    let x = (y / (1.0 - y)).ln();
+    let x = y.ln() - (-y).ln_1p();
     Ok(x)
 }
 
@@ -82,11 +95,13 @@ mod tests {
     use super::*;
 
     #[rstest]
+    #[case(-19.0)]
     #[case(-10.0)]
     #[case(-1.0)]
     #[case(0.0)]
     #[case(1.0)]
     #[case(10.0)]
+    #[case(19.0)]
     fn test_circular_behavior(#[case] x: f64) -> anyhow::Result<()> {
         assert_relative_eq!(x, logistic_inverse(logistic(x)?)?, epsilon = 1e-8);
 
