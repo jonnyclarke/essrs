@@ -31,6 +31,7 @@ use crate::functions::numerical::{log_diff_exp, log_sum_exp};
 ///
 /// # Errors
 /// * propagates `log_sum_exp` error
+#[inline(always)]
 pub fn softplus(x: f64) -> anyhow::Result<f64> {
     let y = log_sum_exp(0.0, x).context(format!("softplus failed with argument x={x}"))?;
 
@@ -41,6 +42,7 @@ pub fn softplus(x: f64) -> anyhow::Result<f64> {
 ///
 /// # Errors
 /// * propagates `softplus` error
+#[inline(always)]
 pub fn softplus_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
     let y = softplus(x)?;
 
@@ -51,6 +53,7 @@ pub fn softplus_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
 ///
 /// # Errors
 /// * propagates `softplus_log_jacobian` error
+#[inline(always)]
 pub fn softplus_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Result<()> {
     let (s, lj) = softplus_log_jacobian(*x)?;
 
@@ -76,6 +79,7 @@ pub fn softplus_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Resul
 ///
 /// # Errors
 /// * propagates `log_diff_exp` error
+#[inline(always)]
 pub fn softplus_inverse(y: f64) -> anyhow::Result<f64> {
     let x = log_diff_exp(y, 0.0).context("inverse softplus has failed")?;
 

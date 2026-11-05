@@ -302,7 +302,7 @@ mod tests_ess {
     };
 
     #[test]
-    fn test_initialise() -> anyhow::Result<()> {
+    fn test_initialise_static() -> anyhow::Result<()> {
         let data = array![[0.0_f64, 0.0_f64]];
         let model = GaussianLl1dDataErrors::new(&data);
 
@@ -315,6 +315,18 @@ mod tests_ess {
             [2.0_f64, 1.0_f64]
         ];
         ess.initialise(&model, physical.view())?;
+
+        let true_data_state = array![
+            [0.0_f64, softplus_inverse(1.0_f64)?],
+            [1.0_f64, softplus_inverse(1.0_f64)?],
+            [-1.0_f64, softplus_inverse(1.0_f64)?],
+            [2.0_f64, softplus_inverse(1.0_f64)?]
+        ];
+        assert_relative_eq!(
+            true_data_state,
+            ess.state.get_state_matrix_view(),
+            epsilon = 1e-6
+        );
 
         let expected_ll = array![
             (softplus_inverse(1.0_f64)? - 1.0)
@@ -335,18 +347,6 @@ mod tests_ess {
         {
             assert_relative_eq!(computed, expected, epsilon = 1e-6);
         }
-
-        let true_data_state = array![
-            [0.0_f64, softplus_inverse(1.0_f64)?],
-            [1.0_f64, softplus_inverse(1.0_f64)?],
-            [-1.0_f64, softplus_inverse(1.0_f64)?],
-            [2.0_f64, softplus_inverse(1.0_f64)?]
-        ];
-        assert_relative_eq!(
-            true_data_state,
-            ess.state.get_state_matrix_view(),
-            epsilon = 1e-6
-        );
 
         Ok(())
     }

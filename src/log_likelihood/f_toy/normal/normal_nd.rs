@@ -10,7 +10,7 @@ use crate::{
             ndim_to_norm_const, normal_nd_ll,
         },
     },
-    log_likelihood::LogLikelihoodModel,
+    log_likelihood::{LogLikelihoodModel, ParameterTransformer, Parametrised},
 };
 
 /// Toy normal distribution in N dimensions
@@ -188,11 +188,15 @@ impl BuildAnalyticNormalNDimensional<Set, Set, Set> {
     }
 }
 
-impl LogLikelihoodModel for AnalyticNormalNDimensional {
+impl Parametrised for AnalyticNormalNDimensional {
     fn get_n_parameters(&self) -> usize {
         self.n_dimensions
     }
+}
 
+impl ParameterTransformer for AnalyticNormalNDimensional {}
+
+impl LogLikelihoodModel for AnalyticNormalNDimensional {
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let matmul = mahalanobis_from_cholesky(
             &arrayview1_to_dvector(&parameters),

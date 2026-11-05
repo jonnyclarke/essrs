@@ -4,7 +4,9 @@ use anyhow::ensure;
 use ndarray::{Array1, Array2, ArrayView1, array};
 
 use crate::{
-    chains::static_buffer::StaticBuffer, log_likelihood::LogLikelihoodModel, state::WalkerState,
+    chains::static_buffer::StaticBuffer,
+    log_likelihood::{LogLikelihoodModel, ParameterTransformer, Parametrised},
+    state::WalkerState,
 };
 
 /// Builder for a walker state object
@@ -102,11 +104,15 @@ impl Default for TestLeftRightUniformLogL {
     }
 }
 
-impl LogLikelihoodModel for TestLeftRightUniformLogL {
+impl Parametrised for TestLeftRightUniformLogL {
     fn get_n_parameters(&self) -> usize {
         1
     }
+}
 
+impl ParameterTransformer for TestLeftRightUniformLogL {}
+
+impl LogLikelihoodModel for TestLeftRightUniformLogL {
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         if parameters[0].gt(&self.l) && parameters[0].lt(&self.r) {
             return Ok(self.p);

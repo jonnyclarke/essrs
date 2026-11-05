@@ -1,17 +1,10 @@
 //! Log-likelihood function
 
-use anyhow;
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
+use ndarray::{Array1, Array2, ArrayView1}; //, ArrayView2, ArrayViewMut1, ArrayViewMut2};
 
 use crate::{
-    functions::{
-        likelihood::log_normalised_gaussian_s2,
-        transforms::{
-            apply_transform_column,
-            softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
-        },
-    },
-    log_likelihood::{LogLikelihoodModel, ProbThetaGivenDataModel},
+    functions::likelihood::log_normalised_gaussian_s2,
+    log_likelihood::{LogLikelihoodModel, ParameterTransformerConfig, Parametrised},
 };
 
 /// Normal distribution in one-dimension; error deconvolution
@@ -22,6 +15,8 @@ use crate::{
 pub struct GaussianLl1dDataErrors {
     mu: Array1<f64>,
     sigma_sqr: Array1<f64>,
+
+    softplus_idx: Vec<usize>,
 }
 
 impl GaussianLl1dDataErrors {
@@ -35,7 +30,13 @@ impl GaussianLl1dDataErrors {
         let mut sigma_sqr = data.column(1).to_owned();
         sigma_sqr.iter_mut().for_each(|x| *x = *x * *x);
 
-        Self { mu, sigma_sqr }
+        let softplus_idx = vec![1];
+
+        Self {
+            mu,
+            sigma_sqr,
+            softplus_idx,
+        }
     }
 
     /// Constructor method
@@ -48,53 +49,40 @@ impl GaussianLl1dDataErrors {
         let mut sigma_sqr = sigma.to_owned();
         sigma_sqr.iter_mut().for_each(|x| *x = *x * *x);
 
-        Self { mu, sigma_sqr }
+        let softplus_idx = vec![1];
+
+        Self {
+            mu,
+            sigma_sqr,
+            softplus_idx,
+        }
+    }
+}
+
+impl Parametrised for GaussianLl1dDataErrors {
+    fn get_n_parameters(&self) -> usize {
+        2
+    }
+}
+
+impl ParameterTransformerConfig for GaussianLl1dDataErrors {
+    const HAS_SOFTPLUS: bool = true;
+
+    const HAS_STICK_BREAK: bool = false;
+    const HAS_TANH: bool = false;
+    const HAS_ORDSEQ: bool = false;
+    const HAS_LOGISTIC: bool = false;
+
+    fn softplus(&self) -> &[usize] {
+        &self.softplus_idx
     }
 }
 
 impl LogLikelihoodModel for GaussianLl1dDataErrors {
-    fn get_n_parameters(&self) -> usize {
-        2
-    }
-
-    fn columnar_transform_physical_to_internal(
-        &self,
-        physical: ArrayView2<f64>,
-        mut internal: ArrayViewMut2<f64>,
-    ) -> anyhow::Result<()> {
-        internal.assign(&physical);
-        apply_transform_column(softplus_inverse, &mut internal, 1)?;
-
-        Ok(())
-    }
-
-    fn columnar_transform_internal_to_physical(
-        &self,
-        internal: ArrayView2<f64>,
-        mut physical: ArrayViewMut2<f64>,
-    ) -> anyhow::Result<()> {
-        physical.assign(&internal);
-        apply_transform_column(softplus, &mut physical, 1)?;
-
-        Ok(())
-    }
-
-    fn convert_internal_to_physical_tracking_ll_warp(
-        &self,
-        log_jacobian: &mut f64,
-        internal: ArrayView1<f64>,
-        physical: &mut ArrayViewMut1<f64>,
-    ) -> anyhow::Result<()> {
-        physical.assign(&internal);
-
-        softplus_log_jacobian_inplace(&mut physical[1], log_jacobian)?;
-
-        Ok(())
-    }
-
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let mu = parameters[0];
-        let sigma2 = parameters[1].powi(2);
+        let sigma = parameters[1];
+        let sigma2 = sigma * sigma;
 
         let ll = self
             .mu
@@ -102,22 +90,6 @@ impl LogLikelihoodModel for GaussianLl1dDataErrors {
             .zip(self.sigma_sqr.iter())
             .map(|(v, e2)| log_normalised_gaussian_s2(*v, mu, sigma2 + e2))
             .sum::<f64>();
-
-        Ok(ll)
-    }
-}
-
-impl ProbThetaGivenDataModel for GaussianLl1dDataErrors {
-    fn log_likelihood_pointwise(&self, parameters: ArrayView1<f64>) -> anyhow::Result<Array1<f64>> {
-        let mu = parameters[0];
-        let sigma2 = parameters[1].powi(2);
-
-        let ll = Array1::from_iter(
-            self.mu
-                .iter()
-                .zip(self.sigma_sqr.iter())
-                .map(|(v, e2)| log_normalised_gaussian_s2(*v, mu, sigma2 + e2)),
-        );
 
         Ok(ll)
     }

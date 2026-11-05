@@ -3,7 +3,7 @@ use ndarray::{Array1, ArrayView1};
 
 use crate::{
     functions::{likelihood::log_normalised_gaussian_s2, numerical::log_sum_exp},
-    log_likelihood::LogLikelihoodModel,
+    log_likelihood::{LogLikelihoodModel, ParameterTransformer, Parametrised},
 };
 
 /// Normal 1D sampler mixture model. P(data|theta).
@@ -183,11 +183,15 @@ impl BuildAnalyticNormalMixtureOneD<Set, Set, Set> {
     }
 }
 
-impl LogLikelihoodModel for AnalyticNormalMixtureOneD {
+impl Parametrised for AnalyticNormalMixtureOneD {
     fn get_n_parameters(&self) -> usize {
         1
     }
+}
 
+impl ParameterTransformer for AnalyticNormalMixtureOneD {}
+
+impl LogLikelihoodModel for AnalyticNormalMixtureOneD {
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let x = parameters[0];
 
@@ -291,7 +295,7 @@ mod tests {
 
     // #[test]
     // fn test_init_failure_theta_too_large() -> anyhow::Result<()> {
-    //     let result = DynNcompMixtureModelProbData::new(
+    //     let result = DynToyMixModelDistributionSampler::new(
     //         array![1.5],
     //         vec![
     //             Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)),
@@ -307,7 +311,7 @@ mod tests {
     // #[case(array![0.2])]
     // #[case(array![0.2, 0.1, 0.1])]
     // fn test_init_failure_theta_wrong_length(#[case] theta: Array1<f64>) -> anyhow::Result<()> {
-    //     let result = DynNcompMixtureModelProbData::new(
+    //     let result = DynToyMixModelDistributionSampler::new(
     //         theta,
     //         vec![
     //             Arc::new(AnalyticNormalToyLogL::new(0.0, 1.0)),

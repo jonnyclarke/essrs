@@ -9,7 +9,7 @@ use pyo3::prelude::*;
 use crate::{
     log_likelihood::f_toy::{
         AnalyticBetaDistToyLogL, AnalyticNealsFunnelToyLogL, AnalyticRosenbrockToyLogL,
-        DynNcompMixtureModelProbData,
+        DynToyMixModelDistributionSampler,
         normal::{
             AnalyticNormalToyLogL, BuildAnalyticNormalMixtureOneD, BuildAnalyticNormalNDimensional,
         },
@@ -41,8 +41,7 @@ pub fn beta_distribution(alpha: f64, beta: f64) -> PyResult<PyLogLikelihoodModel
     );
     Ok(PyLogLikelihoodModel {
         model: model.clone(),
-        p_data_g_theta: Some(model),
-        p_theta_g_data: None,
+        sampler_component: Some(model),
     })
 }
 
@@ -56,7 +55,7 @@ pub fn dyn_fdata_ncomp_mm<'py>(
         .iter()
         .map(|model| {
             model
-                .p_data_g_theta
+                .sampler_component
                 .as_ref()
                 .cloned()
                 .context("Model does not have a distribution sampler")
@@ -66,11 +65,10 @@ pub fn dyn_fdata_ncomp_mm<'py>(
 
     Ok(PyLogLikelihoodModel {
         model: Arc::new(
-            DynNcompMixtureModelProbData::new(theta, components)
+            DynToyMixModelDistributionSampler::new(theta, components)
                 .context("failed to build dynamic mixture model")?,
         ),
-        p_data_g_theta: None,
-        p_theta_g_data: None,
+        sampler_component: None,
     })
 }
 
@@ -79,8 +77,7 @@ pub fn neals_funnel() -> PyLogLikelihoodModel {
     let model = Arc::new(AnalyticNealsFunnelToyLogL::new());
     PyLogLikelihoodModel {
         model: model.clone(),
-        p_data_g_theta: Some(model),
-        p_theta_g_data: None,
+        sampler_component: Some(model),
     }
 }
 
@@ -92,8 +89,7 @@ pub fn normal_1d(mu: f64, sigma: f64) -> PyResult<PyLogLikelihoodModel> {
     );
     Ok(PyLogLikelihoodModel {
         model: model.clone(),
-        p_data_g_theta: Some(model),
-        p_theta_g_data: None,
+        sampler_component: Some(model),
     })
 }
 
@@ -113,8 +109,7 @@ pub fn normal_nd(
                 .build()
                 .context("normal n-dimensional model build has failed")?,
         ),
-        p_data_g_theta: None,
-        p_theta_g_data: None,
+        sampler_component: None,
     })
 }
 
@@ -134,8 +129,7 @@ pub fn normal_1d_mix(
                 .build()
                 .context("model build has failed")?,
         ),
-        p_data_g_theta: None,
-        p_theta_g_data: None,
+        sampler_component: None,
     })
 }
 
@@ -160,7 +154,6 @@ pub fn rosenbrock(a: f64, b: f64) -> PyLogLikelihoodModel {
     let model = Arc::new(AnalyticRosenbrockToyLogL::new(a, b));
     PyLogLikelihoodModel {
         model: model.clone(),
-        p_data_g_theta: Some(model),
-        p_theta_g_data: None,
+        sampler_component: Some(model),
     }
 }

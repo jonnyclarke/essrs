@@ -1,6 +1,7 @@
 //! Module containing numerical helper functions.
 //! These functions are designed to help perform logarithmic operations while avoiding numerical under- or overflow.
 //! Such functions arise often in mixture models where single-point probability is the sum of multiple components.
+#[cfg(feature = "numerical-checks")]
 use anyhow::ensure;
 use ndarray::{Array1, ArrayView1};
 
@@ -30,6 +31,7 @@ where
 /// # Errors
 /// * a < b; results in ln(-x)
 pub fn log_diff_exp(a: f64, b: f64) -> anyhow::Result<f64> {
+    #[cfg(feature = "numerical-checks")]
     ensure!(
         a.gt(&b),
         "invalid arguments to 'log_diff_exp', a <= b, {a} <= {b} "
@@ -60,10 +62,13 @@ pub fn log_diff_exp(a: f64, b: f64) -> anyhow::Result<f64> {
 ///
 /// # Errors
 /// * either input is infinite
+#[inline(always)]
 pub fn log_sum_exp(a: f64, b: f64) -> anyhow::Result<f64> {
-    ensure!(a.is_finite(), "invalid argument to 'log_sum_exp', a = {a}");
-    ensure!(b.is_finite(), "invalid argument to 'log_sum_exp', b = {a}");
-
+    #[cfg(feature = "numerical-checks")]
+    {
+        ensure!(a.is_finite(), "invalid argument to 'log_sum_exp', a = {a}");
+        ensure!(b.is_finite(), "invalid argument to 'log_sum_exp', b = {b}");
+    }
     let v_max = a.max(b);
 
     Ok(v_max + ((a - v_max).exp() + (b - v_max).exp()).ln())

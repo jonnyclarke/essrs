@@ -12,7 +12,7 @@ use anyhow::ensure;
 /// $$
 ///
 /// # Errors
-#[inline]
+#[inline(always)]
 pub fn logistic(x: f64) -> anyhow::Result<f64> {
     const CUTOFF: f64 = 37.0;
 
@@ -37,7 +37,7 @@ pub fn logistic(x: f64) -> anyhow::Result<f64> {
 ///
 /// # Errors
 /// * propages `logistic` error
-#[inline]
+#[inline(always)]
 pub fn logistic_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
     let y = logistic(x)?;
 
@@ -57,6 +57,7 @@ pub fn logistic_log_jacobian(x: f64) -> anyhow::Result<(f64, f64)> {
 ///
 /// # Errors
 /// * propagates `logistic_log_jacobian` error
+#[inline(always)]
 pub fn logistic_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Result<()> {
     let (y, lj) = logistic_log_jacobian(*x)?;
 
@@ -75,7 +76,7 @@ pub fn logistic_log_jacobian_inplace(x: &mut f64, ll: &mut f64) -> anyhow::Resul
 ///
 /// # Errors
 /// * raises an error when input value outside valid bounds; 0 < y < 1
-#[inline]
+#[inline(always)]
 pub fn logistic_inverse(y: f64) -> anyhow::Result<f64> {
     ensure!(
         y.gt(&0.0_f64) && y.lt(&1.0_f64),

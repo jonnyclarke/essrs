@@ -31,14 +31,9 @@ rstest_macros = "0.26.1"
 tempfile = "3.27.0"
 tracing-subscriber = { version = "0.3.22", features = ["time"] }
 
-[workspace.metadata.clippy]
-wildcard_imports = "forbid"
-
-[[bench]]
-name = "bench_toy_normal_parallel"
-harness = false
-
 [features]
+default = ["numerical-checks"]
+numerical-checks = []
 doc-math = ["dep:katexit"]
 python = ["dep:pyo3", "dep:numpy"]
 
@@ -46,6 +41,21 @@ python = ["dep:pyo3", "dep:numpy"]
 version = "0.26"
 optional = true
 features = ["extension-module", "anyhow"]
+
+# +------------+
+# | BENCHMARKS |
+# +------------+
+
+[[bench]]
+name = "bench_toy_normal_parallel"
+harness = false
+
+# +-----------------+
+# | CODE FORMATTING |
+# +-----------------+
+
+[workspace.metadata.clippy]
+wildcard_imports = "forbid"
 
 [lints.rust]
 missing_docs = "deny"

@@ -1,7 +1,9 @@
 use anyhow;
 use ndarray::ArrayView1;
 
-use crate::log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel};
+use crate::log_likelihood::{
+    LogLikelihoodModel, ParameterTransformer, Parametrised, ToyModelSamplerComponent,
+};
 
 const N_PARAMETERS_NEALS_FUNNEL: usize = 2;
 
@@ -42,11 +44,15 @@ impl Default for AnalyticNealsFunnelToyLogL {
     }
 }
 
-impl LogLikelihoodModel for AnalyticNealsFunnelToyLogL {
+impl Parametrised for AnalyticNealsFunnelToyLogL {
     fn get_n_parameters(&self) -> usize {
         N_PARAMETERS_NEALS_FUNNEL
     }
+}
 
+impl ParameterTransformer for AnalyticNealsFunnelToyLogL {}
+
+impl LogLikelihoodModel for AnalyticNealsFunnelToyLogL {
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let x = parameters[0];
         let y = parameters[1];
@@ -58,7 +64,7 @@ impl LogLikelihoodModel for AnalyticNealsFunnelToyLogL {
     }
 }
 
-impl ProbDataGivenThetaModel for AnalyticNealsFunnelToyLogL {}
+impl ToyModelSamplerComponent for AnalyticNealsFunnelToyLogL {}
 
 #[cfg(test)]
 mod tests {
