@@ -6,6 +6,7 @@ mod toy;
 
 use std::sync::Arc;
 
+use anyhow::Context;
 use numpy::{PyArray2, PyArray3, PyReadonlyArray2};
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyTuple};
 
@@ -16,7 +17,10 @@ use crate::{
     python_bindings::{
         moves::{diffconv_move, differential_move, hybrid_ddc_move},
         scientific::{dyn_ftheta_ncomp_mm, normal_1d_deconv, normal_2d_gmm_deconv},
-        toy::{dyn_fdata_ncomp_mm, neals_funnel, normal_1d, normal_1d_mix, normal_nd, rosenbrock},
+        toy::{
+            beta_distribution, dyn_fdata_ncomp_mm, neals_funnel, normal_1d, normal_1d_mix,
+            normal_nd, rosenbrock,
+        },
     },
 };
 
@@ -212,15 +216,15 @@ fn run_mcmc<'py>(
 
     sampler
         .initialise_dyn(model.as_ref(), initial_conditions.view())
-        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        .context("'run mcmc' program has failed")?;
 
     sampler
         .run_burn_in_dyn(model.as_ref(), burn.as_ref(), config.n_burn_in)
-        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        .context("'run mcmc' program has failed")?;
 
     sampler
         .run_sampler_dyn(model.as_ref(), sampling.as_ref())
-        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        .context("'run mcmc' program has failed")?;
 
     // cast everything back to python for return
     let py_state = PyArray3::from_owned_array(py, sampler.extract_state_history());
@@ -246,6 +250,7 @@ fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let model = PyModule::new(m.py(), "model")?;
 
     let toy = PyModule::new(m.py(), "toy")?;
+    toy.add_function(wrap_pyfunction!(beta_distribution, &toy)?)?;
     toy.add_function(wrap_pyfunction!(neals_funnel, &toy)?)?;
     toy.add_function(wrap_pyfunction!(normal_1d, &toy)?)?;
     toy.add_function(wrap_pyfunction!(normal_nd, &toy)?)?;

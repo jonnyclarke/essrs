@@ -8,13 +8,43 @@ use pyo3::prelude::*;
 
 use crate::{
     log_likelihood::f_toy::{
-        AnalyticNealsFunnelToyLogL, AnalyticRosenbrockToyLogL, DynNcompMixtureModelProbData,
+        AnalyticBetaDistToyLogL, AnalyticNealsFunnelToyLogL, AnalyticRosenbrockToyLogL,
+        DynNcompMixtureModelProbData,
         normal::{
             AnalyticNormalToyLogL, BuildAnalyticNormalMixtureOneD, BuildAnalyticNormalNDimensional,
         },
     },
     python_bindings::PyLogLikelihoodModel,
 };
+
+#[pyfunction]
+#[
+    pyo3(
+        signature = (
+            alpha=0.5,
+            beta=0.5
+        ),
+        text_signature = "(alpha=0.5, beta=0.5)"
+    )
+]
+#[doc = "Beta Distribution toy model."]
+#[doc = ""]
+#[doc = "Tests MCMC ability to recover distribution near an asymptotic boundary."]
+#[doc = ""]
+#[doc = "Args:"]
+#[doc = "    alpha: Shape parameter shifting distribution towards 1."]
+#[doc = "    beta: Shape parameter shifting distribution towards 0."]
+pub fn beta_distribution(alpha: f64, beta: f64) -> PyResult<PyLogLikelihoodModel> {
+    let model = Arc::new(
+        AnalyticBetaDistToyLogL::new(alpha, beta)
+            .context("construction of 'beta_distribution' python binding has failed")?,
+    );
+    Ok(PyLogLikelihoodModel {
+        model: model.clone(),
+        p_data_g_theta: Some(model),
+        p_theta_g_data: None,
+    })
+}
 
 #[pyfunction]
 pub fn dyn_fdata_ncomp_mm<'py>(
