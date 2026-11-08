@@ -27,6 +27,7 @@ const TWO_PI: f64 = 2.0 * std::f64::consts::PI;
 /// let example = essrs::functions::likelihood::normalised_gaussian(0.0, 0.0, 1.0);
 /// assert_eq!(example, 1.0 / (2.0 * std::f64::consts::PI).sqrt());
 /// ```
+#[inline(always)]
 pub fn normalised_gaussian(x: f64, mu: f64, sigma: f64) -> f64 {
     (-0.5 * ((x - mu) / sigma).powi(2)).exp() / ((2.0 * std::f64::consts::PI).sqrt() * sigma)
 }
@@ -40,6 +41,7 @@ pub fn normalised_gaussian(x: f64, mu: f64, sigma: f64) -> f64 {
 ///
 /// # Returns
 /// Logarithm of probability of `x` under the defined Normal distribution.
+#[inline(always)]
 pub fn log_normalised_gaussian(x: f64, mu: f64, sigma: f64) -> f64 {
     -0.5 * ((x - mu) / sigma).powi(2) + -0.5 * (2.0 * std::f64::consts::PI * sigma.powi(2)).ln()
 }
@@ -54,8 +56,10 @@ pub fn log_normalised_gaussian(x: f64, mu: f64, sigma: f64) -> f64 {
 ///
 /// # Returns
 /// Logarithm of probability of `x` under the defined Normal distribution.
+#[inline(always)]
 pub fn log_normalised_gaussian_s2(x: f64, mu: f64, sigma2: f64) -> f64 {
-    -0.5 * ((x - mu).powi(2) / sigma2) + -0.5 * (2.0 * std::f64::consts::PI * sigma2).ln()
+    let dx = x - mu;
+    -0.5 * (dx * dx / sigma2) + -0.5 * (2.0 * std::f64::consts::PI * sigma2).ln()
 }
 
 /// Evaluate the normal distribution in two dimensions.
@@ -68,6 +72,7 @@ pub fn log_normalised_gaussian_s2(x: f64, mu: f64, sigma2: f64) -> f64 {
 /// `a` - The upper left value of the covariance matrix. Corresponds to the variance in `x` dimension.
 /// `bc` - The upper right == lower left value of the covariance matrix. Corresponds to x:y correlation * standard deviation in x * standard deviation in y.
 /// `d` - The lower right value of the covariance matrix. Corresponds to the variance in `y` dimension.
+#[inline(always)]
 pub fn log_normal_2d(x: f64, y: f64, mu_x: f64, mu_y: f64, a: f64, bc: f64, d: f64) -> f64 {
     let dx = mu_x - x;
     let dy = mu_y - y;

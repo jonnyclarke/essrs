@@ -55,7 +55,8 @@ pub(crate) trait WrappedLogLikelihoodModel: LogLikelihoodModel {
             &mut log_jacobian,
             internal,
             physical,
-        )?;
+        )
+        .context("user-defined parameter transformation, tracking log-jacobian warp, has failed")?;
 
         let ll_parameters = self
             .log_likelihood(physical.view())

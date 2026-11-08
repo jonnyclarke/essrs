@@ -1,13 +1,15 @@
 use anyhow;
-use ndarray::{ArrayView1, ArrayViewMut1};
+use ndarray::ArrayView1;
 use statrs::distribution::{Beta, Continuous};
 
 use crate::{
-    functions::transforms::{
-        apply_transform_column,
-        logistic::{logistic, logistic_inverse, logistic_log_jacobian_inplace},
+    // functions::transforms::{
+    //     apply_transform_column,
+    //     logistic::{logistic, logistic_inverse, logistic_log_jacobian_inplace},
+    // },
+    log_likelihood::{
+        LogLikelihoodModel, ParameterTransformerConfig, Parametrised, ToyModelSamplerComponent,
     },
-    log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel},
 };
 
 const N_PARAMETERS_BETA_DISTRIBUTUON: usize = 1;
@@ -32,6 +34,7 @@ pub struct AnalyticBetaDistToyLogL {
     _alpha: f64,
     _beta: f64,
     f: Beta,
+    logistic: Vec<usize>,
 }
 
 impl AnalyticBetaDistToyLogL {
@@ -45,6 +48,7 @@ impl AnalyticBetaDistToyLogL {
             _alpha: alpha,
             _beta: beta,
             f,
+            logistic: vec![0],
         })
     }
 }
@@ -55,52 +59,68 @@ impl Default for AnalyticBetaDistToyLogL {
     }
 }
 
-impl LogLikelihoodModel for AnalyticBetaDistToyLogL {
+impl Parametrised for AnalyticBetaDistToyLogL {
     fn get_n_parameters(&self) -> usize {
         N_PARAMETERS_BETA_DISTRIBUTUON
     }
+}
 
-    fn columnar_transform_physical_to_internal(
-        &self,
-        physical: ndarray::prelude::ArrayView2<f64>,
-        mut internal: ndarray::prelude::ArrayViewMut2<f64>,
-    ) -> anyhow::Result<()> {
-        internal.assign(&physical);
-        apply_transform_column(logistic_inverse, &mut internal, 0)?;
-
-        Ok(())
+impl ParameterTransformerConfig for AnalyticBetaDistToyLogL {
+    const HAS_LOGISTIC: bool = true;
+    fn logistic(&self) -> &[usize] {
+        &self.logistic
     }
 
-    fn columnar_transform_internal_to_physical(
-        &self,
-        internal: ndarray::prelude::ArrayView2<f64>,
-        mut physical: ndarray::prelude::ArrayViewMut2<f64>,
-    ) -> anyhow::Result<()> {
-        physical.assign(&internal);
-        apply_transform_column(logistic, &mut physical, 0)?;
+    const HAS_ORDSEQ: bool = false;
+    const HAS_SOFTPLUS: bool = false;
+    const HAS_STICK_BREAK: bool = false;
+    const HAS_TANH: bool = false;
+}
 
-        Ok(())
-    }
+// impl ParameterTransformer for AnalyticBetaDistToyLogL {
+//     fn columnar_transform_physical_to_internal(
+//         &self,
+//         physical: ndarray::prelude::ArrayView2<f64>,
+//         mut internal: ndarray::prelude::ArrayViewMut2<f64>,
+//     ) -> anyhow::Result<()> {
+//         internal.assign(&physical);
+//         apply_transform_column(logistic_inverse, &mut internal, 0)?;
 
-    fn convert_internal_to_physical_tracking_ll_warp(
-        &self,
-        log_jacobian: &mut f64,
-        internal: ArrayView1<f64>,
-        physical: &mut ArrayViewMut1<f64>,
-    ) -> anyhow::Result<()> {
-        physical.assign(&internal);
+//         Ok(())
+//     }
 
-        logistic_log_jacobian_inplace(&mut physical[0], log_jacobian)?;
+//     fn columnar_transform_internal_to_physical(
+//         &self,
+//         internal: ndarray::prelude::ArrayView2<f64>,
+//         mut physical: ndarray::prelude::ArrayViewMut2<f64>,
+//     ) -> anyhow::Result<()> {
+//         physical.assign(&internal);
+//         apply_transform_column(logistic, &mut physical, 0)?;
 
-        Ok(())
-    }
+//         Ok(())
+//     }
 
+//     fn convert_internal_to_physical_tracking_ll_warp(
+//         &self,
+//         log_jacobian: &mut f64,
+//         internal: ArrayView1<f64>,
+//         physical: &mut ArrayViewMut1<f64>,
+//     ) -> anyhow::Result<()> {
+//         physical.assign(&internal);
+
+//         logistic_log_jacobian_inplace(&mut physical[0], log_jacobian)?;
+
+//         Ok(())
+//     }
+// }
+
+impl LogLikelihoodModel for AnalyticBetaDistToyLogL {
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         Ok(self.f.ln_pdf(parameters[0]))
     }
 }
 
-impl ProbDataGivenThetaModel for AnalyticBetaDistToyLogL {}
+impl ToyModelSamplerComponent for AnalyticBetaDistToyLogL {}
 
 #[cfg(test)]
 mod tests {

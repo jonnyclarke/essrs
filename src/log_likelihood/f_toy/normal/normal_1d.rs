@@ -3,7 +3,9 @@ use ndarray::ArrayView1;
 
 use crate::{
     functions::likelihood::log_normalised_gaussian,
-    log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel},
+    log_likelihood::{
+        LogLikelihoodModel, ParameterTransformer, Parametrised, ToyModelSamplerComponent,
+    },
 };
 
 /// One dimensional normal distribution
@@ -17,7 +19,8 @@ impl AnalyticNormalToyLogL {
     /// Constructor
     ///
     /// # Arguments
-    /// TODO
+    /// * `mu`: the mean of the normal distribution
+    /// * `sigma`: the standard deviation of the normal distribution
     ///
     /// # Errors
     /// * passed 'sigma' value is <=0
@@ -30,11 +33,15 @@ impl AnalyticNormalToyLogL {
     }
 }
 
-impl LogLikelihoodModel for AnalyticNormalToyLogL {
+impl Parametrised for AnalyticNormalToyLogL {
     fn get_n_parameters(&self) -> usize {
         1
     }
+}
 
+impl ParameterTransformer for AnalyticNormalToyLogL {}
+
+impl LogLikelihoodModel for AnalyticNormalToyLogL {
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let x = parameters[0];
 
@@ -44,7 +51,7 @@ impl LogLikelihoodModel for AnalyticNormalToyLogL {
     }
 }
 
-impl ProbDataGivenThetaModel for AnalyticNormalToyLogL {}
+impl ToyModelSamplerComponent for AnalyticNormalToyLogL {}
 
 #[cfg(test)]
 mod tests {

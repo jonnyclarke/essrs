@@ -170,8 +170,6 @@ mod tests {
             .swap()
             .construct();
 
-        println!("{:#?}", state);
-
         let threads = Threading::new(Some(1), 1)?;
 
         let diff_move = DiffConvMove::new();

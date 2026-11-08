@@ -80,3 +80,7 @@ to build in developer mode and:
 uv run maturin develop --release
 ```
 to build the optimised release package.
+To build with select numerical checks turned off, for even faster runtime, use:
+```bash
+uv run maturin develop --release --no-default-features
+```

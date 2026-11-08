@@ -12,11 +12,11 @@ use pyo3::{exceptions::PyValueError, prelude::*, types::PyTuple};
 
 use crate::{
     ess::EnsembleSliceSampler,
-    log_likelihood::{LogLikelihoodModel, ProbDataGivenThetaModel, ProbThetaGivenDataModel},
+    log_likelihood::{LogLikelihoodModel, ToyModelSamplerComponent},
     moves::DynEnsembleMove,
     python_bindings::{
         moves::{diffconv_move, differential_move, hybrid_ddc_move},
-        scientific::{dyn_ftheta_ncomp_mm, normal_1d_deconv, normal_2d_gmm_deconv},
+        scientific::{normal_1d_deconv, normal_1d_mix_deconv, normal_2d_gmm_deconv},
         toy::{
             beta_distribution, dyn_fdata_ncomp_mm, neals_funnel, normal_1d, normal_1d_mix,
             normal_nd, rosenbrock,
@@ -28,8 +28,7 @@ use crate::{
 pub struct PyLogLikelihoodModel {
     // Own the configured Rust model.
     model: Arc<dyn LogLikelihoodModel>,
-    p_data_g_theta: Option<Arc<dyn ProbDataGivenThetaModel>>,
-    p_theta_g_data: Option<Arc<dyn ProbThetaGivenDataModel>>,
+    sampler_component: Option<Arc<dyn ToyModelSamplerComponent>>,
 }
 
 #[pyclass]
@@ -239,7 +238,7 @@ fn run_mcmc<'py>(
 fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Core Python wrapper classes
     m.add_class::<PyLogLikelihoodModel>()?;
-    // m.add_class::<PyProbDataGivenThetaModel>()?;
+    // m.add_class::<PyToyModelSamplerComponent>()?;
     m.add_class::<PyEnsembleConfig>()?;
     m.add_class::<PyDynMoveHandler>()?;
 
@@ -261,9 +260,8 @@ fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     let scientific = PyModule::new(m.py(), "scientific")?;
     scientific.add_function(wrap_pyfunction!(normal_1d_deconv, &scientific)?)?;
+    scientific.add_function(wrap_pyfunction!(normal_1d_mix_deconv, &scientific)?)?;
     scientific.add_function(wrap_pyfunction!(normal_2d_gmm_deconv, &scientific)?)?;
-
-    scientific.add_function(wrap_pyfunction!(dyn_ftheta_ncomp_mm, &scientific)?)?;
 
     model.add_submodule(&toy)?;
     model.add_submodule(&scientific)?;

@@ -5,6 +5,7 @@ pub mod exponential;
 pub mod logistic;
 pub mod ordseq;
 pub mod softplus;
+pub mod stick_break;
 pub mod tanh;
 
 use anyhow::{Context, ensure};
