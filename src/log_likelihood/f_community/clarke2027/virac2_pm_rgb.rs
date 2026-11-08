@@ -7,7 +7,7 @@ use crate::functions::{
     transforms::apply_transform_column,
     transforms::softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
 };
-use crate::{functions::priors::ln_prior_normal, log_likelihood::LogLikelihoodModel};
+use crate::{functions::priors::ln_prior_normal, log_likelihood::{LogLikelihoodModel, Parametrised, ParameterTransformer,},};
 
 /// Fit proper motion profile of Red Giant Branch
 pub struct C2027LlViracV2ProperMotion {
@@ -42,11 +42,13 @@ impl C2027LlViracV2ProperMotion {
     }
 }
 
-impl LogLikelihoodModel for C2027LlViracV2ProperMotion {
+impl Parametrised for C2027LlViracV2ProperMotion {
     fn get_n_parameters(&self) -> usize {
         self.n_nodes * 2
     }
+}
 
+impl ParameterTransformer for C2027LlViracV2ProperMotion {
     fn columnar_transform_physical_to_internal(
         &self,
         physical: ndarray::prelude::ArrayView2<f64>,
@@ -92,7 +94,9 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotion {
 
         Ok(())
     }
+}
 
+impl LogLikelihoodModel for C2027LlViracV2ProperMotion {
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let mu_nodes = parameters.slice(s![0..self.n_nodes]);
         let sig_nodes = parameters.slice(s![self.n_nodes..2 * self.n_nodes]);

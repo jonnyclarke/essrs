@@ -12,7 +12,7 @@ use crate::{
             softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
         },
     },
-    log_likelihood::LogLikelihoodModel,
+    log_likelihood::{LogLikelihoodModel, Parametrised, ParameterTransformer,},
 };
 
 /// Fit density profile of RC -- 1 peak
@@ -40,11 +40,13 @@ impl Clarke2027LogLiViracV2Rc {
 /// - 1: alpha   :: exponential scale height
 /// - 2: mu      :: mean of RC Gaussian component
 /// - 3: sigma   :: standard deviation of RC gaussian
-impl LogLikelihoodModel for Clarke2027LogLiViracV2Rc {
+impl Parametrised for Clarke2027LogLiViracV2Rc {
     fn get_n_parameters(&self) -> usize {
         4
     }
+}
 
+impl ParameterTransformer for Clarke2027LogLiViracV2Rc {
     fn columnar_transform_physical_to_internal(
         &self,
         physical: ndarray::prelude::ArrayView2<f64>,
@@ -87,7 +89,9 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Rc {
 
         Ok(())
     }
+}
 
+impl LogLikelihoodModel for Clarke2027LogLiViracV2Rc {
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let theta = parameters[0]; // fractional weight of exponential 
         let alpha = parameters[1]; // exponential scale height

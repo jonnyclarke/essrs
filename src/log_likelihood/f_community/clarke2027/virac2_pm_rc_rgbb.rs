@@ -16,7 +16,7 @@ use crate::{
             softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
         },
     },
-    log_likelihood::LogLikelihoodModel,
+    log_likelihood::{LogLikelihoodModel, Parametrised, ParameterTransformer,},
 };
 
 /// Fit proper motion profile of RC and RGBB
@@ -58,10 +58,13 @@ impl C2027LlViracV2ProperMotionRcRgbb {
     }
 }
 
-impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
+impl Parametrised for C2027LlViracV2ProperMotionRcRgbb {
     fn get_n_parameters(&self) -> usize {
         self.n_nodes * 2 + 5
     }
+}
+
+impl ParameterTransformer for C2027LlViracV2ProperMotionRcRgbb {
     fn columnar_transform_physical_to_internal(
         &self,
         physical: ndarray::prelude::ArrayView2<f64>,
@@ -145,7 +148,9 @@ impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
 
         Ok(())
     }
+}
 
+impl LogLikelihoodModel for C2027LlViracV2ProperMotionRcRgbb {
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let mu_nodes = parameters.slice(s![0..self.n_nodes]);
         let sig_nodes = parameters.slice(s![self.n_nodes..2 * self.n_nodes]);

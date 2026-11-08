@@ -14,7 +14,7 @@ use crate::{
             softplus::{softplus, softplus_inverse, softplus_log_jacobian_inplace},
         },
     },
-    log_likelihood::LogLikelihoodModel,
+    log_likelihood::{LogLikelihoodModel, Parametrised, ParameterTransformer,},
 };
 
 /// Fit density profile of RGB -- multi peak formalism
@@ -52,11 +52,13 @@ impl Clarke2027LogLiViracV2Density {
 ///
 /// Hyperparameters of the model
 /// - 10: tau    :: parameter controlling prior on pi
-impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
+impl Parametrised for Clarke2027LogLiViracV2Density {
     fn get_n_parameters(&self) -> usize {
         11
     }
+}
 
+impl ParameterTransformer for Clarke2027LogLiViracV2Density {
     fn columnar_transform_physical_to_internal(
         &self,
         physical: ndarray::prelude::ArrayView2<f64>,
@@ -145,7 +147,9 @@ impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
 
         Ok(())
     }
+}
 
+impl LogLikelihoodModel for Clarke2027LogLiViracV2Density {
     fn log_likelihood(&self, parameters: ArrayView1<f64>) -> anyhow::Result<f64> {
         let theta = parameters[0]; // fractional weight of exponential 
         let alpha = parameters[1]; // exponential scale height
