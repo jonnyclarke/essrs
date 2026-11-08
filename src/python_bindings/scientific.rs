@@ -12,14 +12,30 @@ use crate::{
 };
 
 #[pyfunction]
+#[
+    pyo3(
+        signature = (
+            values,
+            errors,
+        ),
+        text_signature = "(value: numpy.ndarray[float], error: numpy.ndarray[float])"
+    )
+]
+#[doc = "Normal distribution in 1 dimension with error deconvolution."]
+#[doc = ""]
+#[doc = "This enables the uses to extract the true underlying distribution of data which have been convolved with their errors."]
+#[doc = ""]
+#[doc = "Args:"]
+#[doc = "    values: Data point values."]
+#[doc = "    errors: Data point errors."]
 pub fn normal_1d_deconv(
-    mu: PyReadonlyArray1<f64>,
-    sigma: PyReadonlyArray1<f64>,
+    values: PyReadonlyArray1<f64>,
+    errors: PyReadonlyArray1<f64>,
 ) -> PyLogLikelihoodModel {
-    let mu = mu.as_array().to_owned();
-    let sigma = sigma.as_array().to_owned();
+    let values = values.as_array().to_owned();
+    let errors = errors.as_array().to_owned();
 
-    let model = Arc::new(GaussianLl1dDataErrors::from_mu_sigma(&mu, &sigma));
+    let model = Arc::new(GaussianLl1dDataErrors::from_values_errors(&values, &errors));
 
     PyLogLikelihoodModel {
         model: model.clone(),
@@ -28,15 +44,33 @@ pub fn normal_1d_deconv(
 }
 
 #[pyfunction]
+#[
+    pyo3(
+        signature = (
+            values,
+            errors,
+            n,
+        ),
+        text_signature = "(value: numpy.ndarray[float], error: numpy.ndarray[float]), n: int"
+    )
+]
+#[doc = "Normal distribution mixture model in 1 dimension with error deconvolution."]
+#[doc = ""]
+#[doc = "This enables the uses to extract the true underlying distribution of data which have been convolved with their errors."]
+#[doc = ""]
+#[doc = "Args:"]
+#[doc = "    values: Data point values."]
+#[doc = "    errors: Data point errors."]
+#[doc = "    n: The number of normal distributions to include in the fit."]
 pub fn normal_1d_mix_deconv(
-    mu: PyReadonlyArray1<f64>,
-    sigma: PyReadonlyArray1<f64>,
+    values: PyReadonlyArray1<f64>,
+    errors: PyReadonlyArray1<f64>,
     n: usize,
 ) -> PyResult<PyLogLikelihoodModel> {
-    let mu = mu.as_array().to_owned();
-    let sigma = sigma.as_array().to_owned();
+    let values = values.as_array().to_owned();
+    let errors = errors.as_array().to_owned();
 
-    let model = Arc::new(Normal1DimMixErrDeconv::new(mu, sigma, n)?);
+    let model = Arc::new(Normal1DimMixErrDeconv::new(values, errors, n)?);
 
     Ok(PyLogLikelihoodModel {
         model: model.clone(),
@@ -45,6 +79,22 @@ pub fn normal_1d_mix_deconv(
 }
 
 #[pyfunction]
+#[
+    pyo3(
+        signature = (
+            n_components,
+            data,
+        ),
+        text_signature = "(n_components: int, data: numpy.ndarray[float])"
+    )
+]
+#[doc = "Normal distribution mixture model in 2 dimensions with error deconvolution."]
+#[doc = ""]
+#[doc = "This enables the uses to extract the true underlying distribution of data which have been convolved with their errors."]
+#[doc = ""]
+#[doc = "Args:"]
+#[doc = "    `n_components`: The number of 2d normal distributions to include in the fit."]
+#[doc = "    `data`: Data to fit. This should have shape `[n_data, 5]`. The data columns are `[x, y, xerr, yerr, p]`"]
 pub fn normal_2d_gmm_deconv(
     n_components: usize,
     data: PyReadonlyArray2<f64>,

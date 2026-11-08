@@ -18,7 +18,7 @@ use crate::{
         moves::{diffconv_move, differential_move, hybrid_ddc_move},
         scientific::{normal_1d_deconv, normal_1d_mix_deconv, normal_2d_gmm_deconv},
         toy::{
-            beta_distribution, dyn_fdata_ncomp_mm, neals_funnel, normal_1d, normal_1d_mix,
+            beta_distribution, dyn_ncomp_mix_model_sampler, neals_funnel, normal_1d, normal_1d_mix,
             normal_nd, rosenbrock,
         },
     },
@@ -256,7 +256,7 @@ fn _essrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     toy.add_function(wrap_pyfunction!(normal_1d_mix, &toy)?)?;
     toy.add_function(wrap_pyfunction!(rosenbrock, &toy)?)?;
 
-    toy.add_function(wrap_pyfunction!(dyn_fdata_ncomp_mm, &toy)?)?;
+    toy.add_function(wrap_pyfunction!(dyn_ncomp_mix_model_sampler, &toy)?)?;
 
     let scientific = PyModule::new(m.py(), "scientific")?;
     scientific.add_function(wrap_pyfunction!(normal_1d_deconv, &scientific)?)?;
