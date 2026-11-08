@@ -13,8 +13,8 @@ use crate::{
 /// * `mu`: the position of the data points being fit
 /// * `sigma_sqr`: the variance (standard deviation squared) of the data points being fit
 pub struct GaussianLl1dDataErrors {
-    mu: Array1<f64>,
-    sigma_sqr: Array1<f64>,
+    values: Array1<f64>,
+    errors_sqr: Array1<f64>,
 
     softplus_idx: Vec<usize>,
 }
@@ -26,15 +26,15 @@ impl GaussianLl1dDataErrors {
     /// data[:, 0], first column, corresponds to `mu`
     /// data[:, 1], second column, corresponds to `sigma` and will be converted to `sigma_sqr` internally
     pub fn new(data: &Array2<f64>) -> Self {
-        let mu = data.column(0).to_owned();
-        let mut sigma_sqr = data.column(1).to_owned();
-        sigma_sqr.iter_mut().for_each(|x| *x = *x * *x);
+        let values = data.column(0).to_owned();
+        let mut errors_sqr = data.column(1).to_owned();
+        errors_sqr.iter_mut().for_each(|x| *x = *x * *x);
 
         let softplus_idx = vec![1];
 
         Self {
-            mu,
-            sigma_sqr,
+            values,
+            errors_sqr,
             softplus_idx,
         }
     }
@@ -44,16 +44,16 @@ impl GaussianLl1dDataErrors {
     /// Takes individual arrays:
     /// * `mu`: array of the data values
     /// * `sigma`: array of data standard deviation; the conversion to `sigma_sqr` is handled internally
-    pub fn from_mu_sigma(mu: &Array1<f64>, sigma: &Array1<f64>) -> Self {
-        let mu = mu.to_owned();
-        let mut sigma_sqr = sigma.to_owned();
-        sigma_sqr.iter_mut().for_each(|x| *x = *x * *x);
+    pub fn from_values_errors(values: &Array1<f64>, errors: &Array1<f64>) -> Self {
+        let values = values.to_owned();
+        let mut errors_sqr = errors.to_owned();
+        errors_sqr.iter_mut().for_each(|x| *x = *x * *x);
 
         let softplus_idx = vec![1];
 
         Self {
-            mu,
-            sigma_sqr,
+            values,
+            errors_sqr,
             softplus_idx,
         }
     }
@@ -85,9 +85,9 @@ impl LogLikelihoodModel for GaussianLl1dDataErrors {
         let sigma2 = sigma * sigma;
 
         let ll = self
-            .mu
+            .values
             .iter()
-            .zip(self.sigma_sqr.iter())
+            .zip(self.errors_sqr.iter())
             .map(|(v, e2)| log_normalised_gaussian_s2(*v, mu, sigma2 + e2))
             .sum::<f64>();
 

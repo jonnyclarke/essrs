@@ -32,8 +32,8 @@ use crate::{
 #[doc = "Tests MCMC ability to recover distribution near an asymptotic boundary."]
 #[doc = ""]
 #[doc = "Args:"]
-#[doc = "    alpha: Shape parameter shifting distribution towards 1."]
-#[doc = "    beta: Shape parameter shifting distribution towards 0."]
+#[doc = "    `alpha`: Shape parameter shifting distribution towards 1."]
+#[doc = "    `beta`: Shape parameter shifting distribution towards 0."]
 pub fn beta_distribution(alpha: f64, beta: f64) -> PyResult<PyLogLikelihoodModel> {
     let model = Arc::new(
         AnalyticBetaDistToyLogL::new(alpha, beta)
@@ -46,7 +46,23 @@ pub fn beta_distribution(alpha: f64, beta: f64) -> PyResult<PyLogLikelihoodModel
 }
 
 #[pyfunction]
-pub fn dyn_fdata_ncomp_mm<'py>(
+#[
+    pyo3(
+        signature = (
+            theta,
+            list_models,
+        ),
+        text_signature = "theta, list_models"
+    )
+]
+#[doc = "Dynamic mixture model sampler."]
+#[doc = ""]
+#[doc = "This allows you to bind together multiple sub models, e.g. normal 1d, into a mixture model."]
+#[doc = ""]
+#[doc = "Args:"]
+#[doc = "    `theta`: Mixture weights. There must be n `theta` values where `n+1=m` with m being the number of model components (the final component has weight `1 - sum(theta)`). Should all be between `[0,1]` and should sum to <1"]
+#[doc = "    `list_models`: List of models which share the same dimensionallity."]
+pub fn dyn_ncomp_mix_model_sampler<'py>(
     theta: PyReadonlyArray1<'py, f64>,
     list_models: Vec<PyRef<'_, PyLogLikelihoodModel>>,
 ) -> PyResult<PyLogLikelihoodModel> {
@@ -73,6 +89,15 @@ pub fn dyn_fdata_ncomp_mm<'py>(
 }
 
 #[pyfunction]
+#[
+    pyo3(
+        signature = (),
+        text_signature = "()"
+    )
+]
+#[doc = "Neal's Funnel toy model."]
+#[doc = ""]
+#[doc = "Tests MCMC ability to sample hierarchical models with order of magnitude scale changes."]
 pub fn neals_funnel() -> PyLogLikelihoodModel {
     let model = Arc::new(AnalyticNealsFunnelToyLogL::new());
     PyLogLikelihoodModel {
@@ -82,6 +107,22 @@ pub fn neals_funnel() -> PyLogLikelihoodModel {
 }
 
 #[pyfunction]
+#[
+    pyo3(
+        signature = (
+            mu=0.0,
+            sigma=1.0
+        ),
+        text_signature = "(mu: float = 0.0, sigma: float = 1.0)"
+    )
+]
+#[doc = "Normal distribution -1 dimension- toy model."]
+#[doc = ""]
+#[doc = "Test of MCMC sampling routine base functionallity."]
+#[doc = ""]
+#[doc = "Args:"]
+#[doc = "    `mu`: Centroid of normal distribution"]
+#[doc = "    `sigma`: Standard deviation of normal distribution"]
 pub fn normal_1d(mu: f64, sigma: f64) -> PyResult<PyLogLikelihoodModel> {
     let model = Arc::new(
         AnalyticNormalToyLogL::new(mu, sigma)
@@ -94,6 +135,26 @@ pub fn normal_1d(mu: f64, sigma: f64) -> PyResult<PyLogLikelihoodModel> {
 }
 
 #[pyfunction]
+#[
+    pyo3(
+        signature = (
+            n_dimensions,
+            mu,
+            sigma,
+            correlation
+        ),
+        text_signature = "(n_dimensions: int, mu: np.ndarray[float], sigma: np.ndarray[float), correlation: np.ndarray[float]"
+    )
+]
+#[doc = "Normal distribution -N dimensional- toy model."]
+#[doc = ""]
+#[doc = "Test of MCMC sampling in high dimensional spaces."]
+#[doc = ""]
+#[doc = "Args:"]
+#[doc = "    `n_dimensions`: The dimensionallity of the normal distribution. Must be >=1."]
+#[doc = "    `mu`: Centroid vector of normal distribution. Must have length `n_dimensions`."]
+#[doc = "    `sigma`: Standard deviation vector of normal distribution. Musthave length `n_dimensions`."]
+#[doc = "    `correlation`: Dimensional correlations. Format: [p01, p02, p12, p03, p13, p23, p04, ...]. Must have length = `n_dimensions * (n_dimensions - 1) / 2`"]
 pub fn normal_nd(
     n_dimensions: usize,
     mu: PyReadonlyArray1<f64>,
@@ -114,6 +175,26 @@ pub fn normal_nd(
 }
 
 #[pyfunction]
+#[
+    pyo3(
+        signature = (
+            n,
+            theta,
+            mu,
+            sigma,
+        ),
+        text_signature = "(n: int, theta: np.ndarray[float], mu: np.ndarray[float], sigma: np.ndarray[float)"
+    )
+]
+#[doc = "Pre-configured mixture model of normal-1d distributions."]
+#[doc = ""]
+#[doc = "Test performance difference in dynamic model construction vs static construction."]
+#[doc = ""]
+#[doc = "Args:"]
+#[doc = "    n: The number of normal distributions in the mixture."]
+#[doc = "    theta: The mixture weights. Length = n - 1. Must sum to <1. All values should be between 0 and 1."]
+#[doc = "    mu: Centroid vector of normal distributions. Must have length `n`."]
+#[doc = "    sigma: Standard deviation vector of normal distributions. Musthave length `n`."]
 pub fn normal_1d_mix(
     n: usize,
     theta: PyReadonlyArray1<f64>,
